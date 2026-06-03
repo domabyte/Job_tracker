@@ -759,6 +759,47 @@
     from { background-position: 200% 0; }
     to { background-position: -200% 0; }
   }
+
+  /* ── Company Logo / Letter Avatar ── */
+  .company-logo {
+    border-radius: 6px;
+    object-fit: contain;
+    flex-shrink: 0;
+    background: var(--bg-elevated);
+    display: block;
+  }
+
+  .letter-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: #fff;
+    font-weight: 700;
+    flex-shrink: 0;
+    user-select: none;
+    line-height: 1;
+  }
+
+  .company-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .modal-logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .modal-logo-wrap .modal-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 </style>
 </head>
 <body>
@@ -871,6 +912,10 @@
           </select>
         </div>
         <div class="form-group full">
+          <label for="addWebsite">Company Website <span style="font-size:10.5px;color:var(--text-muted);font-weight:400">(for logo — optional)</span></label>
+          <input type="url" id="addWebsite" placeholder="e.g. stripe.com or https://stripe.com" autocomplete="off">
+        </div>
+        <div class="form-group full">
           <label for="addNotes">Notes</label>
           <textarea id="addNotes" placeholder="Add any notes, contacts, or follow-up reminders…"></textarea>
         </div>
@@ -953,7 +998,10 @@
 <div class="modal-backdrop" id="editModal" style="display:none" onclick="closeModalOnBackdrop(event)">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title" id="modalTitle">Edit Application</div>
+      <div class="modal-logo-wrap">
+        <div id="modalLogo" style="flex-shrink:0"></div>
+        <div class="modal-title" id="modalTitle">Edit Application</div>
+      </div>
       <button class="close-btn" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-body">
@@ -980,6 +1028,10 @@
             <option value="Rejected">Rejected</option>
             <option value="Accepted">Accepted</option>
           </select>
+        </div>
+        <div class="form-group full">
+          <label for="editWebsite">Company Website <span style="font-size:10.5px;color:var(--text-muted);font-weight:400">(for logo — optional)</span></label>
+          <input type="url" id="editWebsite" placeholder="e.g. stripe.com">
         </div>
         <div class="form-group full">
           <label for="editNotes">Notes</label>
@@ -1011,20 +1063,23 @@ let editingId = null;
 let sortCol = 'date';
 let sortDir = 'desc';
 
+// Per-company logo failure cache (key: lowercased company name)
+const logoFailCache = {};
+
 // ── Sample Data ────────────────────────────────────────────────────────────
 const SAMPLE_DATA = [
-  { id: uid(), company: 'Stripe', position: 'Senior Software Engineer', date: daysAgo(2),  status: 'Interview',    notes: 'Recruiter screen done. Technical round scheduled for next week with the payments team.' },
-  { id: uid(), company: 'Linear', position: 'Product Engineer',          date: daysAgo(5),  status: 'Phone Screen', notes: 'Had a great call with Karri. Loves the portfolio. Waiting on next steps.' },
-  { id: uid(), company: 'Vercel',  position: 'Staff Engineer',            date: daysAgo(8),  status: 'Applied',      notes: 'Applied through careers page. Role closes end of month.' },
-  { id: uid(), company: 'Figma',   position: 'Engineering Manager',       date: daysAgo(14), status: 'Rejected',     notes: 'Got to final round. Went with internal candidate.' },
-  { id: uid(), company: 'Notion',  position: 'Frontend Engineer',         date: daysAgo(21), status: 'Offer',        notes: 'Offer received: $190k base + equity. Deadline to respond is June 10.' },
-  { id: uid(), company: 'Loom',    position: 'Full-Stack Engineer',        date: daysAgo(30), status: 'Rejected',     notes: 'Form rejection email. No feedback provided.' },
-  { id: uid(), company: 'Retool',  position: 'React Engineer',            date: daysAgo(11), status: 'Interview',    notes: 'Two rounds done. Waiting on take-home.' },
-  { id: uid(), company: 'Supabase',position: 'Developer Advocate',        date: daysAgo(3),  status: 'Applied',      notes: 'Great open-source community, excited about this role.' },
-  { id: uid(), company: 'PlanetScale', position: 'Platform Engineer',     date: daysAgo(45), status: 'Accepted',     notes: 'Accepted the offer! Start date July 7th. Base $210k.' },
-  { id: uid(), company: 'Clerk',   position: 'Senior Frontend Engineer',  date: daysAgo(7),  status: 'Phone Screen', notes: 'CTO reached out on LinkedIn. Quick intro call scheduled.' },
-  { id: uid(), company: 'Resend',  position: 'Engineer',                  date: daysAgo(1),  status: 'Applied',      notes: 'Small team, huge upside. Cold applied via email to zeno@resend.dev.' },
-  { id: uid(), company: 'Railway', position: 'Infrastructure Engineer',   date: daysAgo(18), status: 'Rejected',     notes: 'Did not pass the system design round. Asked for feedback.' },
+  { id: uid(), company: 'Stripe',      position: 'Senior Software Engineer', date: daysAgo(2),  status: 'Interview',    website: 'stripe.com',      notes: 'Recruiter screen done. Technical round scheduled for next week with the payments team.' },
+  { id: uid(), company: 'Linear',      position: 'Product Engineer',          date: daysAgo(5),  status: 'Phone Screen', website: 'linear.app',      notes: 'Had a great call with Karri. Loves the portfolio. Waiting on next steps.' },
+  { id: uid(), company: 'Vercel',      position: 'Staff Engineer',            date: daysAgo(8),  status: 'Applied',      website: 'vercel.com',      notes: 'Applied through careers page. Role closes end of month.' },
+  { id: uid(), company: 'Figma',       position: 'Engineering Manager',       date: daysAgo(14), status: 'Rejected',     website: 'figma.com',       notes: 'Got to final round. Went with internal candidate.' },
+  { id: uid(), company: 'Notion',      position: 'Frontend Engineer',         date: daysAgo(21), status: 'Offer',        website: 'notion.so',       notes: 'Offer received: $190k base + equity. Deadline to respond is June 10.' },
+  { id: uid(), company: 'Loom',        position: 'Full-Stack Engineer',        date: daysAgo(30), status: 'Rejected',     website: 'loom.com',        notes: 'Form rejection email. No feedback provided.' },
+  { id: uid(), company: 'Retool',      position: 'React Engineer',            date: daysAgo(11), status: 'Interview',    website: 'retool.com',      notes: 'Two rounds done. Waiting on take-home.' },
+  { id: uid(), company: 'Supabase',    position: 'Developer Advocate',        date: daysAgo(3),  status: 'Applied',      website: 'supabase.com',    notes: 'Great open-source community, excited about this role.' },
+  { id: uid(), company: 'PlanetScale', position: 'Platform Engineer',         date: daysAgo(45), status: 'Accepted',     website: 'planetscale.com', notes: 'Accepted the offer! Start date July 7th. Base $210k.' },
+  { id: uid(), company: 'Clerk',       position: 'Senior Frontend Engineer',  date: daysAgo(7),  status: 'Phone Screen', website: 'clerk.com',       notes: 'CTO reached out on LinkedIn. Quick intro call scheduled.' },
+  { id: uid(), company: 'Resend',      position: 'Engineer',                  date: daysAgo(1),  status: 'Applied',      website: 'resend.dev',      notes: 'Small team, huge upside. Cold applied via email to zeno@resend.dev.' },
+  { id: uid(), company: 'Railway',     position: 'Infrastructure Engineer',   date: daysAgo(18), status: 'Rejected',     website: 'railway.app',     notes: 'Did not pass the system design round. Asked for feedback.' },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1064,6 +1119,71 @@ function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Logo / Letter Avatar ───────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  '#4f6ef7','#7c3aed','#10b981','#f59e0b',
+  '#ef4444','#14b8a6','#8b5cf6','#3b82f6',
+  '#ec4899','#f97316'
+];
+
+function nameHash(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function avatarColor(name) {
+  return AVATAR_COLORS[nameHash(name) % AVATAR_COLORS.length];
+}
+
+function extractDomain(website) {
+  if (!website) return '';
+  try {
+    const url = /^https?:\/\//i.test(website) ? website : 'https://' + website;
+    return new URL(url).hostname;
+  } catch (_) {
+    return website.replace(/^https?:\/\//i, '').split('/')[0];
+  }
+}
+
+function guessDomain(company) {
+  return company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+}
+
+function onLogoError(img) {
+  const company = img.dataset.company;
+  logoFailCache[company.toLowerCase()] = true;
+  const size = parseInt(img.getAttribute('width') || '24', 10);
+  const fontSize = Math.floor(size * 0.46);
+  const color = avatarColor(company);
+  const letter = company.charAt(0).toUpperCase();
+  const span = document.createElement('span');
+  span.className = 'letter-avatar';
+  span.style.cssText = `width:${size}px;height:${size}px;background:${color};font-size:${fontSize}px`;
+  span.textContent = letter;
+  if (img.parentNode) img.parentNode.replaceChild(span, img);
+}
+
+function logoHtml(company, website, size) {
+  size = size || 24;
+  const key = company.toLowerCase();
+  const fontSize = Math.floor(size * 0.46);
+  const color = avatarColor(company);
+  const letter = company.charAt(0).toUpperCase();
+  const borderRadius = size >= 36 ? '8px' : '6px';
+
+  if (logoFailCache[key]) {
+    return `<span class="letter-avatar" style="width:${size}px;height:${size}px;background:${color};font-size:${fontSize}px;border-radius:${borderRadius}">${letter}</span>`;
+  }
+
+  const domain = website ? extractDomain(website) : guessDomain(company);
+  const src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
+
+  return `<img src="${src}" class="company-logo" width="${size}" height="${size}" style="border-radius:${borderRadius}" alt="${esc(letter)}" data-company="${esc(company)}" onerror="onLogoError(this)" loading="lazy">`;
+}
+
 // ── Persistence ────────────────────────────────────────────────────────────
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
@@ -1073,7 +1193,9 @@ function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      entries = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      // Ensure legacy entries without website field still work
+      entries = parsed.map(e => ({ website: '', ...e }));
     } else {
       entries = SAMPLE_DATA;
       save();
@@ -1202,9 +1324,12 @@ function renderTable() {
     else if (days > 14) daysClass = 'aging';
 
     const notesPreview = e.notes ? `<span class="notes-preview" title="${esc(e.notes)}">${esc(e.notes)}</span>` : '<span style="color:var(--text-muted);font-size:12px">—</span>';
+    const logo = logoHtml(e.company, e.website || '', 24);
 
     return `<tr onclick="openEdit('${e.id}')">
-      <td class="td-company">${esc(e.company)}</td>
+      <td class="td-company">
+        <div class="company-cell">${logo}<span>${esc(e.company)}</span></div>
+      </td>
       <td class="td-position td-date">${esc(e.position)}</td>
       <td class="td-date">${formatDate(e.date)}</td>
       <td><span class="badge ${badgeClass(e.status)}">${esc(e.status)}</span></td>
@@ -1237,7 +1362,7 @@ function toggleForm() {
 }
 
 function clearForm() {
-  ['addCompany','addPosition','addNotes'].forEach(id => { document.getElementById(id).value = ''; });
+  ['addCompany','addPosition','addNotes','addWebsite'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('addStatus').value = 'Applied';
   document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
 }
@@ -1248,12 +1373,13 @@ function addEntry() {
   const date     = document.getElementById('addDate').value;
   const status   = document.getElementById('addStatus').value;
   const notes    = document.getElementById('addNotes').value.trim();
+  const website  = document.getElementById('addWebsite').value.trim();
 
   if (!company) return shake('addCompany'), toast('Company name is required', 'error');
   if (!position) return shake('addPosition'), toast('Position is required', 'error');
   if (!date) return shake('addDate'), toast('Date is required', 'error');
 
-  const entry = { id: uid(), company, position, date, status, notes };
+  const entry = { id: uid(), company, position, date, status, notes, website };
   entries.unshift(entry);
   save();
   renderStats();
@@ -1280,7 +1406,9 @@ function openEdit(id) {
   document.getElementById('editDate').value     = e.date;
   document.getElementById('editStatus').value   = e.status;
   document.getElementById('editNotes').value    = e.notes || '';
+  document.getElementById('editWebsite').value  = e.website || '';
   document.getElementById('modalTitle').textContent = `${e.company} — ${e.position}`;
+  document.getElementById('modalLogo').innerHTML = logoHtml(e.company, e.website || '', 40);
   document.getElementById('editModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   setTimeout(() => document.getElementById('editCompany').focus(), 80);
@@ -1303,6 +1431,7 @@ function saveEdit() {
   const date     = document.getElementById('editDate').value;
   const status   = document.getElementById('editStatus').value;
   const notes    = document.getElementById('editNotes').value.trim();
+  const website  = document.getElementById('editWebsite').value.trim();
 
   if (!company) return shake('editCompany'), toast('Company name is required', 'error');
   if (!position) return shake('editPosition'), toast('Position is required', 'error');
@@ -1310,7 +1439,7 @@ function saveEdit() {
 
   const idx = entries.findIndex(x => x.id === editingId);
   if (idx === -1) return;
-  entries[idx] = { ...entries[idx], company, position, date, status, notes };
+  entries[idx] = { ...entries[idx], company, position, date, status, notes, website };
   save();
   renderStats();
   renderTable();
@@ -1350,9 +1479,9 @@ function clearFilters() {
 
 // ── Export CSV ─────────────────────────────────────────────────────────────
 function exportCSV() {
-  const headers = ['Company', 'Position', 'Date Applied', 'Status', 'Days Since Applied', 'Notes'];
+  const headers = ['Company', 'Position', 'Date Applied', 'Status', 'Days Since Applied', 'Website', 'Notes'];
   const rows = entries.map(e => [
-    e.company, e.position, e.date, e.status, daysBetween(e.date), e.notes || ''
+    e.company, e.position, e.date, e.status, daysBetween(e.date), e.website || '', e.notes || ''
   ]);
 
   const csvContent = [headers, ...rows]
