@@ -800,6 +800,97 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  /* ── Focus Mode ── */
+  .section-label,
+  .stats-grid,
+  .form-panel,
+  .main,
+  .table-panel,
+  .table-scroll {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .section-label { overflow: hidden; }
+  .stats-grid { overflow: hidden; }
+  .form-panel { overflow: hidden; }
+
+  body.focus-mode .section-label {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  body.focus-mode .stats-grid {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  body.focus-mode .form-panel {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  body.focus-mode .main {
+    padding: 12px 24px 12px;
+  }
+
+  body.focus-mode .table-panel {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 84px);
+  }
+
+  body.focus-mode .table-scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .btn-focus {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    transition: all var(--transition);
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .btn-focus:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
+
+  .btn-focus.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-focus.active:hover { background: var(--accent-hover); }
+
+  .btn-exit-focus {
+    display: none;
+    background: rgba(239,68,68,0.1);
+    color: var(--status-rejected);
+    border: 1px solid rgba(239,68,68,0.25);
+  }
+  .btn-exit-focus:hover { background: rgba(239,68,68,0.2); }
+
+  body.focus-mode .btn-exit-focus { display: inline-flex; }
+
+  @media (max-width: 640px) {
+    body.focus-mode .main { padding: 8px 10px 8px; }
+    body.focus-mode .table-panel { height: calc(100vh - 72px); }
+  }
 </style>
 </head>
 <body>
@@ -811,6 +902,10 @@
       Job<span>Track</span>
     </a>
     <div class="header-actions">
+      <button class="btn btn-exit-focus btn-sm" onclick="toggleFocus()" title="Exit Focus Mode (Esc)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,14 4,9 9,4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+        <span>Exit Focus Mode</span>
+      </button>
       <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <span>Export CSV</span>
@@ -938,6 +1033,10 @@
         <input type="text" class="search-input" id="searchInput" placeholder="Search company or position…" oninput="renderTable()">
       </div>
       <div class="filter-row">
+        <button class="btn-focus btn-sm" id="btnFocusToggle" onclick="toggleFocus()" title="Focus Mode (Cmd+Shift+F)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          Focus
+        </button>
         <select class="filter-select" id="filterStatus" onchange="renderTable()">
           <option value="">All Statuses</option>
           <option value="Applied">Applied</option>
@@ -1058,10 +1157,12 @@
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'jobtrack_entries';
+const FOCUS_KEY = 'jobtrack_focus';
 let entries = [];
 let editingId = null;
 let sortCol = 'date';
 let sortDir = 'desc';
+let focusModeEnabled = false;
 
 // Per-company logo failure cache (key: lowercased company name)
 const logoFailCache = {};
@@ -1527,9 +1628,36 @@ function shake(id) {
   }, 800);
 }
 
+// ── Focus Mode ─────────────────────────────────────────────────────────────
+function toggleFocus() {
+  focusModeEnabled = !focusModeEnabled;
+  applyFocusState();
+  localStorage.setItem(FOCUS_KEY, focusModeEnabled ? '1' : '0');
+}
+
+function applyFocusState() {
+  const body = document.body;
+  const btn = document.getElementById('btnFocusToggle');
+  if (focusModeEnabled) {
+    body.classList.add('focus-mode');
+    if (btn) { btn.classList.add('active'); btn.title = 'Exit Focus Mode (Esc)'; }
+  } else {
+    body.classList.remove('focus-mode');
+    if (btn) { btn.classList.remove('active'); btn.title = 'Focus Mode (Cmd+Shift+F)'; }
+  }
+}
+
 // ── Keyboard shortcuts ─────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
+  // Escape: close modal first; if no modal and in focus mode, exit focus
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('editModal');
+    if (modal && modal.style.display === 'flex') {
+      closeModal();
+    } else if (focusModeEnabled) {
+      toggleFocus();
+    }
+  }
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
     e.preventDefault();
     document.getElementById('searchInput').focus();
@@ -1537,6 +1665,10 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
     e.preventDefault();
     openAddForm();
+  }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'F') {
+    e.preventDefault();
+    toggleFocus();
   }
 });
 
@@ -1550,6 +1682,13 @@ function init() {
 
   if (entries.length === 0) {
     document.getElementById('formPanel').classList.add('open');
+  }
+
+  // Restore focus mode state
+  const savedFocus = localStorage.getItem(FOCUS_KEY);
+  if (savedFocus === '1') {
+    focusModeEnabled = true;
+    applyFocusState();
   }
 
   updateSortHeaders();
