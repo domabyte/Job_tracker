@@ -436,7 +436,7 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 .cmdk-item-text{flex:1;min-width:0}
 .cmdk-item-title{font-size:13px;font-weight:500;color:var(--text-primary)}
 .cmdk-item-desc{font-size:11px;color:var(--text-muted)}
-.cmdk-kbd{font-size:9px;padding:2px 6px;border-radius:4px;background:var(--bg-elevated);color:var(--text-muted);font-family:'JetBrains Mono',monospace;border:1px solid var(--border)}
+.cmdk-kbd{font-size:11px;padding:4px 10px;border-radius:5px;background:var(--bg-elevated);color:var(--text-muted);font-family:'JetBrains Mono',monospace;border:1px solid var(--border);min-width:32px;text-align:center;font-weight:600}
 
 /* ══════════════════════════════════════════════
    TOAST
@@ -451,14 +451,89 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
    RESPONSIVE
    ══════════════════════════════════════════════ */
 @media(max-width:1200px){.kanban-board{grid-template-columns:repeat(3,1fr)}.stats-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:900px){.analytics-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr 1fr}.kanban-board{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.analytics-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr 1fr}.kanban-board{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(3,1fr)}.view-switcher .view-btn{padding:6px 10px}}
 @media(max-width:640px){
-  .main{padding:16px 14px 40px}.app-header{padding:0 14px}
-  .stats-grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}
-  .modal-form-grid{grid-template-columns:1fr}.table-toolbar{flex-direction:column;align-items:stretch}
-  .filter-row{flex-direction:column}.kanban-board{grid-template-columns:1fr;gap:8px}
-  .kanban-col{max-height:300px;min-height:200px}.analytics-stats{grid-template-columns:repeat(2,1fr)}
-  .view-switcher .view-btn span{display:none}.header-actions .btn span{display:none}
+  body{font-size:14px}
+  .app-header{padding:0 12px;overflow-x:auto}
+  .header-inner{height:52px;gap:8px}
+  .logo{font-size:15px;gap:8px;flex-shrink:0}
+  .logo-icon{width:28px;height:28px;font-size:13px}
+  .main{padding:14px 12px 60px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .stat-card{padding:14px 16px}
+  .stat-value{font-size:22px}
+  .stat-label{font-size:9px}
+  .form-grid{grid-template-columns:1fr}
+  .form-panel-header{padding:14px 16px}
+  .form-body{padding:0 16px 16px}
+  .view-switcher .view-btn{padding:5px 8px;font-size:10px}
+  .view-switcher .view-btn span{display:none}
+  .header-actions .btn span{display:none}
+  .header-actions .btn-icon{width:32px;height:32px}
+  .header-actions{gap:4px}
+  .table-toolbar{flex-direction:column;align-items:stretch;padding:12px 14px;gap:8px}
+  .search-wrap{min-width:0}
+  .filter-row{flex-direction:column;align-items:stretch;gap:6px}
+  .filter-row select,.filter-row input{width:100%;min-width:0}
+  .table-meta{padding:10px 14px;flex-direction:column;gap:4px;font-size:10px}
+  th,td{padding:10px 12px;font-size:11px}
+  td{padding:12px 12px}
+  .td-actions{width:56px}
+  .action-btn{padding:6px 8px}
+  .kanban-board{grid-template-columns:1fr;gap:8px}
+  .kanban-col{max-height:280px;min-height:180px}
+  .kanban-card{padding:10px 12px}
+  .kanban-card-company{font-size:11px}
+  .kanban-card-position{font-size:10px}
+  .analytics-grid{gap:12px}
+  .analytics-card{padding:16px;min-height:220px}
+  .analytics-card h3{font-size:12px}
+  .analytics-stats{grid-template-columns:repeat(2,1fr);gap:6px}
+  .analytics-stat{padding:14px 10px}
+  .as-value{font-size:22px}
+  .modal{max-width:100%;margin:0 12px;border-radius:var(--radius-lg)}
+  .modal-header{padding:16px 20px}
+  .modal-body{padding:20px}
+  .modal-footer{padding:14px 20px;flex-direction:column;gap:8px}
+  .modal-footer>div{width:100%}
+  .modal-footer .btn{flex:1;justify-content:center}
+  .modal-form-grid{gap:10px}
+  .cmdk-modal{max-width:calc(100vw - 24px);max-height:70vh}
+  .cmdk-input{font-size:14px}
+  .cmdk-item{padding:12px 14px;min-height:48px}
+  .cmdk-item-title{font-size:14px}
+  .cmdk-item-icon{width:36px;height:36px;font-size:16px}
+  .cmdk-kbd{font-size:10px;padding:3px 8px;min-width:28px}
+  .toast-container{bottom:12px;right:12px;left:12px}
+  .toast{max-width:100%;font-size:12px;padding:12px 14px}
+  .badge{font-size:9px;padding:1px 8px}
+  .notes-preview{max-width:100px;font-size:10px}
+}
+@media(max-width:480px){
+  .app-header{padding:0 8px}
+  .header-inner{height:48px;gap:6px}
+  .logo{font-size:13px;gap:6px}
+  .logo-icon{width:24px;height:24px;font-size:11px}
+  .main{padding:10px 8px 48px}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:6px}
+  .stat-card{padding:12px 14px}
+  .stat-value{font-size:20px}
+  .view-switcher .view-btn{padding:4px 6px;font-size:9px}
+  .view-switcher .view-btn svg{width:11px;height:11px}
+  .theme-toggle{width:30px;height:30px;font-size:13px}
+  .cmdk-backdrop{padding-top:10vh}
+  .cmdk-modal{max-width:calc(100vw - 16px);max-height:80vh}
+  .cmdk-input-wrap{padding:12px}
+  .cmdk-results{padding:6px}
+  .cmdk-item{padding:10px 12px;min-height:44px}
+  .cmdk-item-icon{width:32px;height:32px}
+  .kanban-body{padding:6px}
+  .kanban-card{padding:8px 10px}
+  .analytics-card{padding:14px;min-height:200px}
+  .chart-wrap{height:180px}
+  td{padding:10px 8px;font-size:10px}
+  th{padding:8px;font-size:9px}
+  .td-company{font-size:11px}
 }
 </style>
 </head>
