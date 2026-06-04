@@ -1242,7 +1242,7 @@ function init(){
   document.getElementById('addDate').value=new Date().toISOString().split('T')[0];
   load();if(entries.length===0)document.getElementById('formPanel').classList.add('open');
   updateSortHeaders();renderStats();renderTable();initParticles();
-  gsap.from('.stat-card',{opacity:0,y:10,duration:0.3,stagger:0.04,ease:'power2.out',delay:0.05});
+  gsap.from('.stat-card',{opacity:0.3,y:8,duration:0.2,stagger:0.02,ease:'power2.out',delay:0.02});
   gsap.from('.form-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.15});
   gsap.from('.table-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.2});
 }
