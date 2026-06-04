@@ -9,15 +9,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
-<!-- Supabase: config + client. Edit supabase-config.js for local dev. -->
+<!-- Supabase: config inline for deploy, edit supabase-config.js for local dev -->
 <script>
-  // Config — inline for deploy, override via supabase-config.js for local dev
   window.SUPABASE_CONFIG={
     url:'https://rctscnzzcyxrsgwhqsjk.supabase.co',
     anonKey:'sb_publishable_r2Q9iD-xojFB2aMOVDs29g_9NTHyPBz'
   };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ══════════════════════════════════════════════
    DESIGN SYSTEM — Light & Dark
@@ -947,21 +945,72 @@ let funnelChart=null,donutChart=null,weeklyChart=null;
 let cmdkIndex=0;
 
 // ══════════════════════════════════════════════════════════════════════════════
-// SUPABASE — client + auth
+// SUPABASE — REST API (no CDN dependency)
 // ══════════════════════════════════════════════════════════════════════════════
-let supabase=null;
-function initSupabase(){
-  if(!window.SUPABASE_CONFIG||!window.SUPABASE_CONFIG.url||!window.SUPABASE_CONFIG.anonKey){
-    document.getElementById('authError').textContent='Missing supabase config — check supabase-config.example.js';
-    return null;
-  }
-  supabase=window.supabase.createClient(window.SUPABASE_CONFIG.url,window.SUPABASE_CONFIG.anonKey);
-  return supabase;
+const SB=window.SUPABASE_CONFIG||{};
+const SB_URL=SB.url,SB_KEY=SB.anonKey;
+let currentUser=null,sbAccessToken=null;
+
+function sbHeaders(extra={}){
+  return {'apikey':SB_KEY,'Content-Type':'application/json','Accept':'application/json',...sbAccessToken?{'Authorization':`Bearer ${sbAccessToken}`}:{},...extra};
+}
+async function sbFetch(path,opts={}){
+  const r=await fetch(SB_URL+path,{...opts,headers:sbHeaders(opts.headers)});
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.message||e.msg||e.error_description||`HTTP ${r.status}`)}
+  const ct=r.headers.get('content-type')||'';
+  return ct.includes('json')?r.json():r.text();
 }
 
-let currentUser=null;
+// ── Auth ──
+async function checkAuth(){
+  const token=localStorage.getItem('pipeline_token');
+  if(!token){showAuthUI();return}
+  sbAccessToken=token;
+  try{
+    const user=await sbFetch('/auth/v1/user',{headers:{'Authorization':`Bearer ${token}`}});
+    currentUser=user;
+    onAuthSuccess(user.email||user.id);
+  }catch{localStorage.removeItem('pipeline_token');showAuthUI()}
+}
 
-// ── Auth UI ──
+async function signUp(){
+  const email=document.getElementById('authEmailUp').value.trim(),pass=document.getElementById('authPasswordUp').value;
+  if(!email||!pass)return setAuthError('Email and password required');
+  if(pass.length<6)return setAuthError('Password min 6 chars');
+  showAuthLoading(true);setAuthError('');
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/signup',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d=await r.json();
+    if(!r.ok)return showAuthLoading(false),setAuthError(d.msg||d.message||'Sign up failed');
+    if(d.id&&d.email){
+      sbAccessToken=d.access_token||null;currentUser=d;
+      if(sbAccessToken)localStorage.setItem('pipeline_token',sbAccessToken);
+      showAuthLoading(false);onAuthSuccess(d.email);
+    }else{showAuthLoading(false);setAuthError('Check your email for the confirmation link.')}
+  }catch(e){showAuthLoading(false);setAuthError(e.message)}
+}
+
+async function signIn(){
+  const email=document.getElementById('authEmail').value.trim(),pass=document.getElementById('authPassword').value;
+  if(!email||!pass)return setAuthError('Email and password required');
+  showAuthLoading(true);setAuthError('');
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d=await r.json();
+    if(!r.ok)return showAuthLoading(false),setAuthError(d.msg||d.error_description||d.message||'Invalid credentials');
+    sbAccessToken=d.access_token;localStorage.setItem('pipeline_token',d.access_token);
+    currentUser=d.user;showAuthLoading(false);onAuthSuccess(d.user.email);
+  }catch(e){showAuthLoading(false);setAuthError(e.message)}
+}
+
+async function signOut(){
+  try{await fetch(SB_URL+'/auth/v1/logout',{method:'POST',headers:sbHeaders()})}catch{}
+  localStorage.removeItem('pipeline_token');currentUser=null;sbAccessToken=null;entries=[];
+  document.getElementById('authOverlay').style.display='flex';document.getElementById('authBar').style.display='none';
+  document.querySelectorAll('.auth-form input').forEach(i=>i.value='');document.getElementById('authError').textContent='';
+}
+
+function showAuthUI(){document.getElementById('authOverlay').style.display='flex';document.getElementById('authBar').style.display='none'}
 function showAuthForm(mode){
   document.getElementById('authTabSignIn').classList.toggle('active',mode==='signin');
   document.getElementById('authTabSignUp').classList.toggle('active',mode==='signup');
@@ -969,80 +1018,26 @@ function showAuthForm(mode){
   document.getElementById('authFormSignUp').style.display=mode==='signup'?'flex':'none';
   document.getElementById('authError').textContent='';
 }
+function showAuthLoading(v){document.getElementById('authLoading').style.display=v?'flex':'none';document.querySelectorAll('.auth-form,.auth-btn,.auth-tabs,.auth-logo').forEach(e=>e.style.opacity=v?'0.4':'1')}
+function setAuthError(msg){document.getElementById('authError').textContent=msg}
+function onAuthSuccess(email){document.getElementById('authOverlay').style.display='none';document.getElementById('authBar').style.display='flex';document.getElementById('authUserEmail').textContent=email;loadEntries()}
 
-function showAuthLoading(v){
-  document.getElementById('authLoading').style.display=v?'flex':'none';
-  document.querySelectorAll('.auth-form, .auth-btn, .auth-tabs, .auth-logo').forEach(e=>{
-    if(e.closest)return;
-    e.style.opacity=v?'0.4':'1';
-  });
-}
-
-async function signUp(){
-  const email=document.getElementById('authEmailUp').value.trim();
-  const pass=document.getElementById('authPasswordUp').value;
-  if(!email||!pass)return setAuthError('Email and password required');
-  if(pass.length<6)return setAuthError('Password must be at least 6 characters');
-  showAuthLoading(true);setAuthError('');
+// ── CRUD ──
+async function loadEntries(){
   try{
-    const {data,error}=await supabase.auth.signUp({email,password:pass});
-    if(error){showAuthLoading(false);return setAuthError(error.message)}
-    setAuthError('Check your email for the confirmation link. Already confirmed? Sign in.');
-    showAuthLoading(false);
-  }catch(e){showAuthLoading(false);setAuthError(e.message)}
+    const data=await sbFetch('/rest/v1/jobs?select=*&order=date.desc,created_at.desc');
+    entries=data||[];
+    document.getElementById('addDate').value=new Date().toISOString().split('T')[0];
+    if(entries.length===0)document.getElementById('formPanel').classList.add('open');
+    updateSortHeaders();renderStats();renderTable();initParticles();
+    gsap.from('.stat-card',{opacity:0.3,y:8,duration:0.2,stagger:0.02,ease:'power2.out',delay:0.02});
+    gsap.from('.form-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.15});
+    gsap.from('.table-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.2});
+  }catch(e){console.error('Load failed:',e);toast('Failed to load data','error')}
 }
-
-async function signIn(){
-  const email=document.getElementById('authEmail').value.trim();
-  const pass=document.getElementById('authPassword').value;
-  if(!email||!pass)return setAuthError('Email and password required');
-  showAuthLoading(true);setAuthError('');
-  try{
-    const {data,error}=await supabase.auth.signInWithPassword({email,password:pass});
-    if(error){showAuthLoading(false);return setAuthError(error.message)}
-    currentUser=data.user;
-    showAuthLoading(false);
-    onAuthSuccess();
-  }catch(e){showAuthLoading(false);setAuthError(e.message)}
-}
-
-async function signOut(){
-  await supabase.auth.signOut();
-  currentUser=null;entries=[];
-  document.getElementById('authOverlay').style.display='flex';
-  document.getElementById('authBar').style.display='none';
-  document.querySelectorAll('.auth-form input').forEach(i=>i.value='');
-  document.getElementById('authError').textContent='';
-}
-
-function setAuthError(msg){
-  document.getElementById('authError').textContent=msg;
-}
-
-function onAuthSuccess(){
-  document.getElementById('authOverlay').style.display='none';
-  document.getElementById('authBar').style.display='flex';
-  document.getElementById('authUserEmail').textContent=currentUser.email;
-  loadEntries();
-  // Realtime sync
-  supabase.channel('jobs-sync')
-    .on('postgres_changes',{event:'*',schema:'public',table:'jobs',filter:`user_id=eq.${currentUser.id}`},()=>{loadEntries()})
-    .subscribe();
-}
-
-// ── Check session on page load ──
-async function checkAuth(){
-  initSupabase();
-  if(!supabase)return;
-  const {data:{session},error}=await supabase.auth.getSession();
-  if(session&&session.user){
-    currentUser=session.user;
-    onAuthSuccess();
-  }else{
-    document.getElementById('authOverlay').style.display='flex';
-    document.getElementById('authBar').style.display='none';
-  }
-}
+async function saveEntry(entry){return sbFetch('/rest/v1/jobs',{method:'POST',body:JSON.stringify(entry),headers:{'Prefer':'return=representation'}})}
+async function updateEntry(id,changes){return sbFetch('/rest/v1/jobs?id=eq.'+id,{method:'PATCH',body:JSON.stringify(changes),headers:{'Prefer':'return=representation'}})}
+async function deleteEntry(id){await sbFetch('/rest/v1/jobs?id=eq.'+id,{method:'DELETE'})}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -1139,46 +1134,6 @@ function initParticles(){
   draw();
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// SUPABASE — CRUD
-// ══════════════════════════════════════════════════════════════════════════════
-async function loadEntries(){
-  try{
-    const {data,error}=await supabase.from('jobs').select('*').order('date',{ascending:false}).order('created_at',{ascending:false});
-    if(error)throw error;
-    entries=data||[];
-    // Start UI
-    document.getElementById('addDate').value=new Date().toISOString().split('T')[0];
-    if(entries.length===0)document.getElementById('formPanel').classList.add('open');
-    updateSortHeaders();renderStats();renderTable();initParticles();
-    gsap.from('.stat-card',{opacity:0.3,y:8,duration:0.2,stagger:0.02,ease:'power2.out',delay:0.02});
-    gsap.from('.form-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.15});
-    gsap.from('.table-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.2});
-  }catch(e){
-    console.error('Failed to load entries:',e);
-    toast('Failed to load data','error');
-  }
-}
-
-async function saveEntry(entry){
-  const {data,error}=await supabase.from('jobs').insert({
-    company:entry.company,position:entry.position,date:entry.date,
-    status:entry.status,website:entry.website||'',notes:entry.notes||''
-  }).select().single();
-  if(error)throw error;
-  return data;
-}
-
-async function updateEntry(id,changes){
-  const {data,error}=await supabase.from('jobs').update(changes).eq('id',id).select().single();
-  if(error)throw error;
-  return data;
-}
-
-async function deleteEntry(id){
-  const {error}=await supabase.from('jobs').delete().eq('id',id);
-  if(error)throw error;
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STATS
