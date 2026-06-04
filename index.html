@@ -1,985 +1,550 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JobTrack — Application Tracker</title>
+<title>Pipeline — Job Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg-base: #0d0f14;
-    --bg-surface: #151820;
-    --bg-elevated: #1c2030;
-    --bg-hover: #222638;
-    --border: #2a2f45;
-    --border-subtle: #1e2338;
-    --text-primary: #e8eaf0;
-    --text-secondary: #8b90a7;
-    --text-muted: #555b72;
-    --accent: #4f6ef7;
-    --accent-hover: #6379f8;
-    --accent-dim: rgba(79,110,247,0.12);
-
-    --status-applied: #3b82f6;
-    --status-applied-bg: rgba(59,130,246,0.12);
-    --status-phone: #8b5cf6;
-    --status-phone-bg: rgba(139,92,246,0.12);
-    --status-interview: #f59e0b;
-    --status-interview-bg: rgba(245,158,11,0.12);
-    --status-offer: #10b981;
-    --status-offer-bg: rgba(16,185,129,0.12);
-    --status-rejected: #ef4444;
-    --status-rejected-bg: rgba(239,68,68,0.12);
-    --status-accepted: #14b8a6;
-    --status-accepted-bg: rgba(20,184,166,0.12);
-
-    --radius: 10px;
-    --radius-sm: 6px;
-    --radius-lg: 14px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.4);
-    --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
-    --transition: 0.18s cubic-bezier(0.4,0,0.2,1);
-  }
-
-  html { scroll-behavior: smooth; }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg-base);
-    color: var(--text-primary);
-    min-height: 100vh;
-    line-height: 1.5;
-  }
-
-  /* ── Scrollbar ── */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg-base); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-
-  /* ── Layout ── */
-  .app-header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(13,15,20,0.85);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border-subtle);
-    padding: 0 24px;
-  }
-
-  .header-inner {
-    max-width: 1280px;
-    margin: 0 auto;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.3px;
-    text-decoration: none;
-  }
-
-  .logo-icon {
-    width: 32px; height: 32px;
-    background: linear-gradient(135deg, var(--accent), #7c3aed);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-  }
-
-  .logo span { color: var(--accent); }
-
-  .header-actions { display: flex; align-items: center; gap: 10px; }
-
-  .main {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 32px 24px 80px;
-  }
-
-  /* ── Buttons ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: var(--radius-sm);
-    font-size: 13.5px;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: all var(--transition);
-    white-space: nowrap;
-    font-family: inherit;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
-  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(79,110,247,0.4); }
-
-  .btn-secondary {
-    background: var(--bg-elevated);
-    color: var(--text-secondary);
-    border: 1px solid var(--border);
-  }
-  .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--text-secondary);
-    padding: 6px 10px;
-  }
-  .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); }
-
-  .btn-danger {
-    background: rgba(239,68,68,0.1);
-    color: var(--status-rejected);
-    border: 1px solid rgba(239,68,68,0.2);
-  }
-  .btn-danger:hover { background: rgba(239,68,68,0.2); }
-
-  .btn-sm { padding: 5px 12px; font-size: 12.5px; }
-
-  .btn svg { flex-shrink: 0; }
-
-  /* ── Stats Dashboard ── */
-  .section-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    margin-bottom: 12px;
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
-    margin-bottom: 32px;
-  }
-
-  .stat-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    position: relative;
-    overflow: hidden;
-    transition: all var(--transition);
-    cursor: default;
-  }
-
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-  }
-
-  .stat-card.total::before { background: linear-gradient(90deg, var(--accent), #7c3aed); }
-  .stat-card.interviews::before { background: var(--status-interview); }
-  .stat-card.offers::before { background: var(--status-offer); }
-  .stat-card.rejected::before { background: var(--status-rejected); }
-  .stat-card.accepted::before { background: var(--status-accepted); }
-  .stat-card.pending::before { background: var(--status-applied); }
-
-  .stat-card:hover { border-color: var(--border); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-
-  .stat-label {
-    font-size: 11.5px;
-    color: var(--text-muted);
-    font-weight: 500;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .stat-value {
-    font-size: 30px;
-    font-weight: 700;
-    letter-spacing: -1px;
-    color: var(--text-primary);
-    line-height: 1;
-  }
-
-  .stat-sub {
-    font-size: 11.5px;
-    color: var(--text-muted);
-    margin-top: 6px;
-  }
-
-  .stat-sub.highlight { color: var(--status-rejected); }
-
-  /* ── Add Entry Form ── */
-  .form-panel {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    margin-bottom: 28px;
-    overflow: hidden;
-    transition: all var(--transition);
-  }
-
-  .form-panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .form-panel-header:hover { background: var(--bg-elevated); }
-
-  .form-panel-title {
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-primary);
-  }
-
-  .form-panel-title .dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-  }
-
-  .chevron {
-    color: var(--text-muted);
-    transition: transform var(--transition);
-  }
-
-  .form-panel.open .chevron { transform: rotate(180deg); }
-
-  .form-body {
-    display: none;
-    padding: 0 20px 20px;
-    animation: slideDown 0.2s ease;
-  }
-
-  .form-panel.open .form-body { display: block; }
-
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .form-group { display: flex; flex-direction: column; gap: 5px; }
-
-  .form-group.full { grid-column: 1 / -1; }
-
-  label {
-    font-size: 11.5px;
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
-
-  input, select, textarea {
-    background: var(--bg-base);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-family: inherit;
-    font-size: 13.5px;
-    padding: 9px 12px;
-    transition: all var(--transition);
-    outline: none;
-    width: 100%;
-  }
-
-  input::placeholder, textarea::placeholder { color: var(--text-muted); }
-
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--accent);
-    background: var(--bg-elevated);
-    box-shadow: 0 0 0 3px rgba(79,110,247,0.12);
-  }
-
-  select { appearance: none; cursor: pointer; }
-
-  textarea { resize: vertical; min-height: 72px; }
-
-  .form-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 4px;
-  }
-
-  /* ── Table Panel ── */
-  .table-panel {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-  }
-
-  .table-toolbar {
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border-bottom: 1px solid var(--border-subtle);
-    flex-wrap: wrap;
-  }
-
-  .search-wrap {
-    position: relative;
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .search-icon {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-    pointer-events: none;
-  }
-
-  .search-input {
-    padding-left: 34px;
-  }
-
-  .filter-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .filter-select {
-    padding: 8px 12px;
-    font-size: 13px;
-    min-width: 130px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b90a7' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 30px;
-  }
-
-  .date-filter-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .date-filter-group span {
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-
-  .date-input { min-width: 130px; }
-
-  .table-meta {
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border-subtle);
-    font-size: 12.5px;
-    color: var(--text-muted);
-  }
-
-  .table-meta strong { color: var(--text-secondary); }
-
-  /* ── Table ── */
-  .table-scroll { overflow-x: auto; }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  thead tr {
-    background: var(--bg-elevated);
-  }
-
-  th {
-    padding: 11px 16px;
-    text-align: left;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    white-space: nowrap;
-    user-select: none;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  th.sortable {
-    cursor: pointer;
-    transition: color var(--transition);
-  }
-
-  th.sortable:hover { color: var(--text-primary); }
-
-  th .sort-icon {
-    display: inline-flex;
-    flex-direction: column;
-    gap: 1px;
-    margin-left: 5px;
-    opacity: 0.35;
-    vertical-align: middle;
-    transition: opacity var(--transition);
-  }
-
-  th.sort-asc .sort-icon, th.sort-desc .sort-icon { opacity: 1; color: var(--accent); }
-
-  th.sort-desc .sort-icon { transform: rotate(180deg); }
-
-  tbody tr {
-    border-bottom: 1px solid var(--border-subtle);
-    transition: background var(--transition);
-    cursor: pointer;
-  }
-
-  tbody tr:last-child { border-bottom: none; }
-
-  tbody tr:hover { background: var(--bg-hover); }
-
-  td {
-    padding: 13px 16px;
-    font-size: 13.5px;
-    vertical-align: middle;
-  }
-
-  .td-company {
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .td-position { color: var(--text-secondary); max-width: 220px; }
-
-  .td-date { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-  .td-days {
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-  }
-
-  .td-days.fresh { color: var(--text-secondary); }
-  .td-days.aging { color: var(--status-interview); }
-  .td-days.stale { color: var(--status-rejected); }
-
-  .td-actions { width: 80px; }
-
-  .action-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 5px 7px;
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
-    font-size: 12px;
-    transition: all var(--transition);
-    font-family: inherit;
-  }
-
-  .action-btn:hover { background: var(--bg-elevated); color: var(--text-primary); }
-
-  .action-btn.del:hover { color: var(--status-rejected); background: rgba(239,68,68,0.1); }
-
-  /* ── Status Badge ── */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11.5px;
-    font-weight: 600;
-    white-space: nowrap;
-    letter-spacing: 0.01em;
-  }
-
-  .badge::before {
-    content: '';
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: currentColor;
-    flex-shrink: 0;
-  }
-
-  .badge-applied    { color: var(--status-applied);   background: var(--status-applied-bg);   }
-  .badge-phone      { color: var(--status-phone);     background: var(--status-phone-bg);     }
-  .badge-interview  { color: var(--status-interview); background: var(--status-interview-bg); }
-  .badge-offer      { color: var(--status-offer);     background: var(--status-offer-bg);     }
-  .badge-rejected   { color: var(--status-rejected);  background: var(--status-rejected-bg);  }
-  .badge-accepted   { color: var(--status-accepted);  background: var(--status-accepted-bg);  }
-
-  /* ── Empty State ── */
-  .empty-state {
-    text-align: center;
-    padding: 64px 24px;
-  }
-
-  .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.3;
-  }
-
-  .empty-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
-  }
-
-  .empty-sub { font-size: 13.5px; color: var(--text-muted); }
-
-  /* ── Modal ── */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(4px);
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    animation: fadeIn 0.15s ease;
-  }
-
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-  .modal {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    width: 100%;
-    max-width: 560px;
-    box-shadow: var(--shadow);
-    animation: scaleIn 0.18s cubic-bezier(0.34,1.56,0.64,1);
-  }
-
-  @keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.94); }
-    to { opacity: 1; transform: scale(1); }
-  }
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .modal-title {
-    font-size: 16px;
-    font-weight: 700;
-  }
-
-  .modal-body { padding: 24px; }
-
-  .modal-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    border-top: 1px solid var(--border-subtle);
-    gap: 12px;
-  }
-
-  .modal-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-  }
-
-  .modal-form-grid .full { grid-column: 1 / -1; }
-
-  .close-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 4px;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition);
-    font-size: 18px;
-    line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  .close-btn:hover { background: var(--bg-elevated); color: var(--text-primary); }
-
-  /* ── Toast ── */
-  .toast-container {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .toast {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 16px;
-    font-size: 13.5px;
-    color: var(--text-primary);
-    box-shadow: var(--shadow);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: toastIn 0.2s ease;
-    max-width: 320px;
-  }
-
-  .toast.success { border-left: 3px solid var(--status-offer); }
-  .toast.error { border-left: 3px solid var(--status-rejected); }
-  .toast.info { border-left: 3px solid var(--accent); }
-
-  @keyframes toastIn {
-    from { opacity: 0; transform: translateX(16px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  @keyframes toastOut {
-    from { opacity: 1; transform: translateX(0); }
-    to { opacity: 0; transform: translateX(16px); }
-  }
-
-  /* ── Progress bar ── */
-  .progress-bar {
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 10px;
-  }
-
-  .progress-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
-  }
-
-  /* ── Misc ── */
-  .tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--accent-dim);
-    color: var(--accent);
-    border: 1px solid rgba(79,110,247,0.2);
-  }
-
-  .divider {
-    height: 1px;
-    background: var(--border-subtle);
-    margin: 8px 0;
-  }
-
-  .notes-preview {
-    color: var(--text-muted);
-    font-size: 12px;
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* ── Responsive ── */
-  @media (max-width: 900px) {
-    .stats-grid { grid-template-columns: repeat(3, 1fr); }
-    .form-grid { grid-template-columns: 1fr 1fr; }
-  }
-
-  @media (max-width: 640px) {
-    .main { padding: 20px 14px 60px; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .form-grid { grid-template-columns: 1fr; }
-    .modal-form-grid { grid-template-columns: 1fr; }
-    .table-toolbar { flex-direction: column; align-items: stretch; }
-    .filter-row { flex-direction: column; }
-    .date-filter-group { flex-wrap: wrap; }
-    .header-actions .btn span { display: none; }
-  }
-
-  @media (max-width: 420px) {
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-    .stat-value { font-size: 24px; }
-  }
-
-  /* ── Highlight anim on new row ── */
-  @keyframes rowHighlight {
-    from { background: var(--accent-dim); }
-    to { background: transparent; }
-  }
-
-  tr.new-row td { animation: rowHighlight 1.5s ease; }
-
-  /* ── Skeleton (used for loading feel) ── */
-  .skeleton {
-    background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-hover) 50%, var(--bg-elevated) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-    border-radius: 4px;
-  }
-
-  @keyframes shimmer {
-    from { background-position: 200% 0; }
-    to { background-position: -200% 0; }
-  }
-
-  /* ── Company Logo / Letter Avatar ── */
-  .company-logo {
-    border-radius: 6px;
-    object-fit: contain;
-    flex-shrink: 0;
-    background: var(--bg-elevated);
-    display: block;
-  }
-
-  .letter-avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    color: #fff;
-    font-weight: 700;
-    flex-shrink: 0;
-    user-select: none;
-    line-height: 1;
-  }
-
-  .company-cell {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .modal-logo-wrap {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .modal-logo-wrap .modal-title {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* ── Focus Mode ── */
-  .section-label,
-  .stats-grid,
-  .form-panel,
-  .main,
-  .table-panel,
-  .table-scroll {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .section-label { overflow: hidden; }
-  .stats-grid { overflow: hidden; }
-  .form-panel { overflow: hidden; }
-
-  body.focus-mode .section-label {
-    opacity: 0;
-    max-height: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-
-  body.focus-mode .stats-grid {
-    opacity: 0;
-    max-height: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-
-  body.focus-mode .form-panel {
-    opacity: 0;
-    max-height: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-
-  body.focus-mode .main {
-    padding: 12px 24px 12px;
-  }
-
-  body.focus-mode .table-panel {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 84px);
-  }
-
-  body.focus-mode .table-scroll {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-  }
-
-  .btn-focus {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: var(--radius-sm);
-    font-size: 13.5px;
-    font-weight: 500;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    background: var(--bg-elevated);
-    color: var(--text-secondary);
-    transition: all var(--transition);
-    white-space: nowrap;
-    font-family: inherit;
-  }
-  .btn-focus:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
-
-  .btn-focus.active {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-  }
-  .btn-focus.active:hover { background: var(--accent-hover); }
-
-  .btn-exit-focus {
-    display: none;
-    background: rgba(239,68,68,0.1);
-    color: var(--status-rejected);
-    border: 1px solid rgba(239,68,68,0.25);
-  }
-  .btn-exit-focus:hover { background: rgba(239,68,68,0.2); }
-
-  body.focus-mode .btn-exit-focus { display: inline-flex; }
-
-  @media (max-width: 640px) {
-    body.focus-mode .main { padding: 8px 10px 8px; }
-    body.focus-mode .table-panel { height: calc(100vh - 72px); }
-  }
+/* ══════════════════════════════════════════════
+   DESIGN SYSTEM — Light & Dark
+   ══════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── Light (default) ── */
+:root,[data-theme="light"]{
+  --bg-base:#f5f5f7;
+  --bg-surface:#ffffff;
+  --bg-elevated:#fafafa;
+  --bg-hover:#ebebed;
+  --bg-glass:rgba(255,255,255,0.65);
+  --bg-glass-strong:rgba(255,255,255,0.88);
+  --bg-glass-header:rgba(245,245,247,0.80);
+
+  --border:rgba(0,0,0,0.07);
+  --border-medium:rgba(0,0,0,0.12);
+  --border-glass:rgba(255,255,255,0.35);
+
+  --text-primary:#1d1d1f;
+  --text-secondary:#6e6e73;
+  --text-muted:#aeaeb2;
+
+  --accent:#0066cc;
+  --accent-hover:#0077ed;
+  --accent-dim:rgba(0,102,204,0.06);
+  --accent-glow:rgba(0,102,204,0.15);
+
+  --green:#34c759;
+  --green-dim:rgba(52,199,89,0.08);
+  --orange:#e8a838;
+  --orange-dim:rgba(232,168,56,0.08);
+  --red:#ff3b30;
+  --red-dim:rgba(255,59,48,0.08);
+  --purple:#8b5cf6;
+  --purple-dim:rgba(139,92,246,0.08);
+
+  --status-applied:#0071e3;
+  --status-applied-bg:rgba(0,113,227,0.06);
+  --status-phone:#8b5cf6;
+  --status-phone-bg:rgba(139,92,246,0.06);
+  --status-interview:#e8a838;
+  --status-interview-bg:rgba(232,168,56,0.08);
+  --status-offer:#34c759;
+  --status-offer-bg:rgba(52,199,89,0.08);
+  --status-rejected:#ff3b30;
+  --status-rejected-bg:rgba(255,59,48,0.06);
+  --status-accepted:#34c759;
+  --status-accepted-bg:rgba(52,199,89,0.08);
+
+  --radius-sm:6px;
+  --radius:10px;
+  --radius-lg:14px;
+  --radius-xl:20px;
+  --shadow:0 8px 40px rgba(0,0,0,0.06),0 1px 4px rgba(0,0,0,0.03);
+  --shadow-sm:0 2px 12px rgba(0,0,0,0.04);
+  --shadow-lg:0 20px 60px rgba(0,0,0,0.08),0 1px 4px rgba(0,0,0,0.03);
+  --shadow-glow:0 4px 20px rgba(0,102,204,0.12);
+
+  --transition:0.25s cubic-bezier(0.34,1.56,0.64,1);
+  --transition-smooth:0.35s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── Dark ── */
+[data-theme="dark"]{
+  --bg-base:#0a0c14;
+  --bg-surface:#11131e;
+  --bg-elevated:#171a26;
+  --bg-hover:#1e2130;
+  --bg-glass:rgba(17,19,30,0.72);
+  --bg-glass-strong:rgba(17,19,30,0.88);
+  --bg-glass-header:rgba(10,12,20,0.82);
+
+  --border:rgba(255,255,255,0.07);
+  --border-medium:rgba(255,255,255,0.12);
+  --border-glass:rgba(255,255,255,0.08);
+
+  --text-primary:#e8ecf5;
+  --text-secondary:#8b92ab;
+  --text-muted:#535970;
+
+  --accent:#4f8ef7;
+  --accent-hover:#6ba0f8;
+  --accent-dim:rgba(79,142,247,0.1);
+  --accent-glow:rgba(79,142,247,0.2);
+
+  --green:#34c759;
+  --green-dim:rgba(52,199,89,0.1);
+  --orange:#e8a838;
+  --orange-dim:rgba(232,168,56,0.1);
+  --red:#ff453a;
+  --red-dim:rgba(255,69,58,0.1);
+  --purple:#a065f7;
+  --purple-dim:rgba(160,101,247,0.1);
+
+  --status-applied:#4f8ef7;
+  --status-applied-bg:rgba(79,142,247,0.1);
+  --status-phone:#a065f7;
+  --status-phone-bg:rgba(160,101,247,0.1);
+  --status-interview:#e8a838;
+  --status-interview-bg:rgba(232,168,56,0.1);
+  --status-offer:#34c759;
+  --status-offer-bg:rgba(52,199,89,0.1);
+  --status-rejected:#ff453a;
+  --status-rejected-bg:rgba(255,69,58,0.08);
+  --status-accepted:#34c759;
+  --status-accepted-bg:rgba(52,199,89,0.1);
+
+  --shadow:0 8px 40px rgba(0,0,0,0.5),0 1px 4px rgba(0,0,0,0.2);
+  --shadow-sm:0 2px 12px rgba(0,0,0,0.3);
+  --shadow-lg:0 20px 60px rgba(0,0,0,0.6),0 1px 4px rgba(0,0,0,0.2);
+  --shadow-glow:0 4px 20px rgba(79,142,247,0.2);
+}
+
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{
+  font-family:'JetBrains Mono','SF Mono','Fira Code',monospace;
+  background:var(--bg-base);color:var(--text-primary);min-height:100vh;line-height:1.5;
+  overflow-x:hidden;transition:background var(--transition-smooth),color var(--transition-smooth);
+}
+::selection{background:var(--accent);color:#fff}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-medium);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted);border-radius:3px}
+
+/* ══════════════════════════════════════════════
+   PARTICLES
+   ══════════════════════════════════════════════ */
+#particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.35}
+
+/* ══════════════════════════════════════════════
+   GLASS
+   ══════════════════════════════════════════════ */
+.glass{
+  background:var(--bg-glass);
+  backdrop-filter:blur(20px) saturate(1.3);
+  -webkit-backdrop-filter:blur(20px) saturate(1.3);
+  border:1px solid var(--border-glass);
+  box-shadow:var(--shadow);
+}
+.glass-strong{
+  background:var(--bg-glass-strong);
+  backdrop-filter:blur(30px) saturate(1.4);
+  -webkit-backdrop-filter:blur(30px) saturate(1.4);
+}
+.glass-header{
+  background:var(--bg-glass-header);
+  backdrop-filter:blur(40px) saturate(1.5);
+  -webkit-backdrop-filter:blur(40px) saturate(1.5);
+  transition:background var(--transition-smooth);
+}
+.white-card{
+  background:var(--bg-surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+}
+
+/* ══════════════════════════════════════════════
+   HEADER
+   ══════════════════════════════════════════════ */
+.app-header{
+  position:sticky;top:0;z-index:100;
+  padding:0 32px;
+  border-bottom:1px solid var(--border);
+}
+.header-inner{
+  max-width:1400px;margin:0 auto;
+  height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.logo{
+  display:flex;align-items:center;gap:10px;
+  font-size:18px;font-weight:700;text-decoration:none;color:var(--text-primary);
+  letter-spacing:-0.3px;
+}
+.logo-icon{
+  width:32px;height:32px;
+  background:linear-gradient(135deg,var(--accent),#5856d6);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;color:#fff;
+}
+.logo span{background:linear-gradient(135deg,var(--accent),#5856d6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-actions{display:flex;align-items:center;gap:8px}
+
+/* ── Theme toggle ── */
+.theme-toggle{
+  width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;background:transparent;border:1px solid var(--border);
+  color:var(--text-muted);cursor:pointer;transition:all var(--transition-smooth);
+  font-size:15px;position:relative;
+}
+.theme-toggle:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-medium)}
+.theme-toggle .icon-sun,.theme-toggle .icon-moon{position:absolute;transition:all 0.3s ease}
+[data-theme="light"] .theme-toggle .icon-sun{opacity:1;transform:rotate(0) scale(1)}
+[data-theme="light"] .theme-toggle .icon-moon{opacity:0;transform:rotate(90deg) scale(0)}
+[data-theme="dark"] .theme-toggle .icon-sun{opacity:0;transform:rotate(-90deg) scale(0)}
+[data-theme="dark"] .theme-toggle .icon-moon{opacity:1;transform:rotate(0) scale(1)}
+
+/* ══════════════════════════════════════════════
+   BUTTONS
+   ══════════════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 18px;border-radius:var(--radius);
+  font-size:12px;font-weight:500;cursor:pointer;
+  border:1px solid transparent;transition:all var(--transition-smooth);
+  white-space:nowrap;font-family:'JetBrains Mono',monospace;position:relative;
+}
+.btn-primary{background:var(--accent);color:#fff;border:none}
+.btn-primary:hover{background:var(--accent-hover);box-shadow:var(--shadow-glow)}
+.btn-secondary{background:var(--bg-glass);color:var(--text-secondary);border-color:var(--border);backdrop-filter:blur(10px)}
+.btn-secondary:hover{background:var(--bg-surface);color:var(--text-primary);border-color:var(--border-medium)}
+.btn-ghost{background:transparent;color:var(--text-secondary)}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,59,48,0.15)}
+.btn-danger:hover{background:rgba(255,59,48,0.12)}
+.btn-sm{padding:5px 14px;font-size:11px;border-radius:7px}
+.btn-icon{width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.btn-icon:hover{background:var(--bg-hover);box-shadow:var(--shadow-sm)}
+
+/* ══════════════════════════════════════════════
+   VIEW SWITCHER
+   ══════════════════════════════════════════════ */
+.view-switcher{
+  display:flex;background:var(--bg-glass);border:1px solid var(--border);
+  border-radius:var(--radius);padding:3px;gap:2px;backdrop-filter:blur(10px);
+}
+.view-btn{
+  padding:6px 14px;border-radius:7px;font-size:11px;font-weight:500;
+  color:var(--text-muted);background:transparent;border:none;cursor:pointer;
+  transition:all var(--transition-smooth);font-family:'JetBrains Mono',monospace;
+  display:flex;align-items:center;gap:6px;
+}
+.view-btn:hover{color:var(--text-secondary)}
+.view-btn.active{background:var(--bg-surface);color:var(--accent);box-shadow:var(--shadow-sm);border:1px solid var(--border)}
+.view-btn svg{width:13px;height:13px}
+
+/* ══════════════════════════════════════════════
+   MAIN
+   ══════════════════════════════════════════════ */
+.main{max-width:1400px;margin:0 auto;padding:32px 32px 80px;position:relative;z-index:1}
+
+/* ══════════════════════════════════════════════
+   STATS
+   ══════════════════════════════════════════════ */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:24px;
+}
+.stat-card{
+  background:var(--bg-surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px 20px;
+  position:relative;overflow:hidden;
+  transition:all var(--transition-smooth);cursor:default;
+}
+.stat-card:hover{box-shadow:var(--shadow-sm);border-color:var(--border-medium)}
+.stat-label{
+  font-size:10px;color:var(--text-muted);font-weight:500;
+  text-transform:uppercase;letter-spacing:0.04em;
+  margin-bottom:6px;display:flex;align-items:center;gap:5px;
+}
+.stat-value{
+  font-size:26px;font-weight:700;color:var(--text-primary);
+  line-height:1;letter-spacing:-0.5px;font-variant-numeric:tabular-nums;
+}
+.stat-sub{font-size:10px;color:var(--text-muted);margin-top:6px}
+
+/* ══════════════════════════════════════════════
+   FORM
+   ══════════════════════════════════════════════ */
+.form-panel{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.form-panel-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;user-select:none}
+.form-panel-header:hover{background:var(--bg-elevated)}
+.form-panel-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--text-primary)}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.9)}}
+.form-body{display:none;padding:0 20px 20px}
+.form-panel.open .form-body{display:block}
+.form-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+label{font-size:10.5px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.03em}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+
+input,select,textarea{
+  background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;
+  color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:12px;
+  padding:9px 12px;transition:all var(--transition);outline:none;width:100%;
+}
+input::placeholder,textarea::placeholder{color:var(--text-muted)}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--accent);background:var(--bg-surface);
+  box-shadow:0 0 0 3px var(--accent-dim);
+}
+select{appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;
+}
+[data-theme="dark"] select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b92ab' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
+textarea{resize:vertical;min-height:72px}
+
+/* ══════════════════════════════════════════════
+   TABLE
+   ══════════════════════════════════════════════ */
+.table-panel{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm)}
+.table-toolbar{padding:16px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;width:13px;height:13px}
+.search-input{padding-left:34px;background:var(--bg-elevated);border-color:var(--border)}
+.search-input:focus{background:var(--bg-surface)}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.table-meta{padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted)}
+.table-meta strong{color:var(--text-secondary)}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--bg-elevated)}
+th{padding:12px 16px;text-align:left;font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;user-select:none;border-bottom:1px solid var(--border)}
+th.sortable{cursor:pointer;transition:color var(--transition)}
+th.sortable:hover{color:var(--text-primary)}
+th .sort-icon{display:inline-flex;margin-left:4px;opacity:0.25;transition:opacity var(--transition);font-size:9px}
+th.sort-asc .sort-icon,th.sort-desc .sort-icon{opacity:1;color:var(--accent)}
+tbody tr{border-bottom:1px solid var(--border);transition:all var(--transition-smooth);cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg-hover)}
+td{padding:14px 16px;font-size:12px;vertical-align:middle}
+.td-company{font-weight:600;color:var(--text-primary)}
+.td-position{color:var(--text-secondary)}
+.td-date{color:var(--text-secondary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.td-days{font-variant-numeric:tabular-nums;font-weight:500}
+.td-days.fresh{color:var(--text-muted)}.td-days.aging{color:var(--orange)}.td-days.stale{color:var(--red)}
+.td-actions{width:70px}
+.action-btn{background:none;border:none;cursor:pointer;padding:5px 7px;border-radius:6px;color:var(--text-muted);transition:all var(--transition);font-family:'JetBrains Mono',monospace}
+.action-btn:hover{background:var(--bg-elevated);color:var(--text-primary)}
+.action-btn.del:hover{color:var(--red);background:var(--red-dim)}
+.company-cell{display:flex;align-items:center;gap:10px}
+.company-logo{border-radius:6px;object-fit:contain;flex-shrink:0;display:block}
+.letter-avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:#fff;font-weight:700;flex-shrink:0;user-select:none;line-height:1}
+.notes-preview{color:var(--text-muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty-state{text-align:center;padding:80px 24px}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:0.2}
+.empty-title{font-size:15px;font-weight:600;color:var(--text-secondary);margin-bottom:6px}
+.empty-sub{font-size:12px;color:var(--text-muted)}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:500;white-space:nowrap;line-height:1.4}
+.badge::before{content:'';width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0}
+.badge-applied{color:var(--status-applied);background:var(--status-applied-bg);border:1px solid var(--status-applied-bg)}
+.badge-phone{color:var(--status-phone);background:var(--status-phone-bg);border:1px solid var(--status-phone-bg)}
+.badge-interview{color:var(--status-interview);background:var(--status-interview-bg);border:1px solid var(--status-interview-bg)}
+.badge-offer{color:var(--status-offer);background:var(--status-offer-bg);border:1px solid var(--status-offer-bg)}
+.badge-rejected{color:var(--status-rejected);background:var(--status-rejected-bg);border:1px solid var(--status-rejected-bg)}
+.badge-accepted{color:var(--status-accepted);background:var(--status-accepted-bg);border:1px solid var(--status-accepted-bg)}
+
+/* ══════════════════════════════════════════════
+   KANBAN
+   ══════════════════════════════════════════════ */
+.kanban-board{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;min-height:500px;padding:4px 0}
+.kanban-col{
+  background:var(--bg-elevated);border:1px solid var(--border);
+  border-radius:var(--radius-lg);display:flex;flex-direction:column;
+  min-height:400px;max-height:calc(100vh - 200px);
+}
+.kanban-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.kanban-title{font-size:11px;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.03em}
+.kanban-dot{width:7px;height:7px;border-radius:50%}
+.kanban-count{font-size:10px;font-weight:500;color:var(--text-muted);background:var(--bg-surface);padding:1px 8px;border-radius:10px;border:1px solid var(--border)}
+.kanban-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;min-height:60px}
+.kanban-body.drag-over{background:var(--accent-dim);border-radius:var(--radius)}
+.kanban-card{background:var(--bg-surface);padding:12px;border-radius:var(--radius);cursor:grab;transition:all var(--transition-smooth);user-select:none;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.kanban-card:hover{box-shadow:var(--shadow);border-color:var(--border-medium)}
+.kanban-card.dragging{opacity:0.5;box-shadow:0 8px 30px rgba(0,0,0,0.15);transform:rotate(2deg)}
+.kanban-card-company{font-size:12px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.kanban-card-position{font-size:11px;color:var(--text-secondary);margin-bottom:8px}
+.kanban-card-meta{display:flex;justify-content:space-between;align-items:center}
+.kanban-card-days{font-size:10px;color:var(--text-muted)}
+.kanban-empty{padding:24px 12px;text-align:center;color:var(--text-muted);font-size:11px;opacity:0.3}
+
+/* ══════════════════════════════════════════════
+   ANALYTICS
+   ══════════════════════════════════════════════ */
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.analytics-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;min-height:280px;position:relative;overflow:hidden;box-shadow:var(--shadow-sm)}
+.analytics-card h3{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:16px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:0.03em}
+.analytics-card.full{grid-column:1/-1}
+.chart-wrap{position:relative;height:220px}
+.analytics-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.analytics-stat{text-align:center;padding:20px 12px;background:var(--bg-elevated);border-radius:var(--radius);border:1px solid var(--border)}
+.as-value{font-size:26px;font-weight:700;color:var(--text-primary);letter-spacing:-0.5px}
+.as-label{font-size:10px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:0.03em}
+
+/* ══════════════════════════════════════════════
+   MODAL
+   ══════════════════════════════════════════════ */
+.modal-backdrop{position:fixed;inset:0;z-index:999;display:none;align-items:center;justify-content:center;padding:16px}
+.modal-backdrop.show{display:flex}
+.modal-backdrop .backdrop-bg{position:absolute;inset:0;background:rgba(0,0,0,0.25)}
+[data-theme="dark"] .modal-backdrop .backdrop-bg{background:rgba(0,0,0,0.55)}
+.modal{position:relative;width:100%;max-width:520px;background:var(--bg-surface);border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);overflow:hidden}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)}
+.modal-title{font-size:15px;font-weight:700}
+.modal-body{padding:24px}
+.modal-footer{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-top:1px solid var(--border);gap:12px}
+.modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.modal-form-grid .full{grid-column:1/-1}
+.close-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:all var(--transition);font-size:16px}
+.close-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+
+/* ══════════════════════════════════════════════
+   COMMAND PALETTE
+   ══════════════════════════════════════════════ */
+.cmdk-backdrop{position:fixed;inset:0;z-index:1000;display:none;align-items:flex-start;justify-content:center;padding-top:15vh}
+.cmdk-backdrop.show{display:flex}
+.cmdk-backdrop .backdrop-bg{position:absolute;inset:0;background:rgba(0,0,0,0.2)}
+[data-theme="dark"] .cmdk-backdrop .backdrop-bg{background:rgba(0,0,0,0.5)}
+.cmdk-modal{position:relative;width:100%;max-width:540px;background:var(--bg-surface);border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);max-height:400px;display:flex;flex-direction:column}
+.cmdk-input-wrap{padding:16px;border-bottom:1px solid var(--border);position:relative}
+.cmdk-input{background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:14px;padding:12px 16px 12px 40px;width:100%;outline:none}
+.cmdk-input:focus{border-color:var(--accent);background:var(--bg-surface);box-shadow:0 0 0 3px var(--accent-dim)}
+.cmdk-search-icon{position:absolute;left:28px;top:50%;transform:translateY(-50%);color:var(--text-muted);width:15px;height:15px;pointer-events:none}
+.cmdk-results{overflow-y:auto;flex:1;padding:8px}
+.cmdk-item{padding:10px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background var(--transition)}
+.cmdk-item:hover,.cmdk-item.active{background:var(--accent-dim)}
+.cmdk-item-icon{width:32px;height:32px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;background:var(--bg-elevated);flex-shrink:0;font-size:14px}
+.cmdk-item-text{flex:1;min-width:0}
+.cmdk-item-title{font-size:13px;font-weight:500;color:var(--text-primary)}
+.cmdk-item-desc{font-size:11px;color:var(--text-muted)}
+.cmdk-kbd{font-size:9px;padding:2px 6px;border-radius:4px;background:var(--bg-elevated);color:var(--text-muted);font-family:'JetBrains Mono',monospace;border:1px solid var(--border)}
+
+/* ══════════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════════ */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--bg-surface);border-radius:var(--radius);padding:12px 16px;font-size:12px;color:var(--text-primary);box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;max-width:340px;pointer-events:all;border:1px solid var(--border)}
+.toast.success{border-left:3px solid var(--green)}
+.toast.error{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--accent)}
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════ */
+@media(max-width:1200px){.kanban-board{grid-template-columns:repeat(3,1fr)}.stats-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.analytics-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr 1fr}.kanban-board{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){
+  .main{padding:16px 14px 40px}.app-header{padding:0 14px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}
+  .modal-form-grid{grid-template-columns:1fr}.table-toolbar{flex-direction:column;align-items:stretch}
+  .filter-row{flex-direction:column}.kanban-board{grid-template-columns:1fr;gap:8px}
+  .kanban-col{max-height:300px;min-height:200px}.analytics-stats{grid-template-columns:repeat(2,1fr)}
+  .view-switcher .view-btn span{display:none}.header-actions .btn span{display:none}
+}
 </style>
 </head>
 <body>
 
-<header class="app-header">
+<canvas id="particles"></canvas>
+
+<!-- ═══ HEADER ═══ -->
+<header class="app-header glass-header">
   <div class="header-inner">
     <a class="logo" href="#">
-      <div class="logo-icon">📋</div>
-      Job<span>Track</span>
+      <div class="logo-icon">⟳</div>
+      <span>Pipeline</span>
     </a>
-    <div class="header-actions">
-      <button class="btn btn-exit-focus btn-sm" onclick="toggleFocus()" title="Exit Focus Mode (Esc)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,14 4,9 9,4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
-        <span>Exit Focus Mode</span>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="view-switcher" id="viewSwitcher">
+        <button class="view-btn active" data-view="table" onclick="switchView('table')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          <span>Table</span>
+        </button>
+        <button class="view-btn" data-view="kanban" onclick="switchView('kanban')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="9.5" y="3" width="5" height="12" rx="1"/><rect x="16" y="3" width="5" height="8" rx="1"/></svg>
+          <span>Kanban</span>
+        </button>
+        <button class="view-btn" data-view="analytics" onclick="switchView('analytics')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+          <span>Stats</span>
+        </button>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <span class="icon-sun">☀️</span>
+        <span class="icon-moon">🌙</span>
       </button>
-      <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span>Export CSV</span>
+      <button class="btn btn-ghost btn-icon" onclick="toggleCmdk()" title="Commands (Cmd+K)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
       </button>
       <button class="btn btn-primary btn-sm" onclick="openAddForm()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        <span>Add Application</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Add</span>
       </button>
     </div>
   </div>
 </header>
 
-<main class="main">
+<!-- ═══ MAIN ═══ -->
+<main class="main" id="appMain">
+
   <!-- Stats -->
-  <div class="section-label">Overview</div>
   <div class="stats-grid" id="statsGrid">
-    <div class="stat-card total">
-      <div class="stat-label">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>
-        Total Applications
-      </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>Total</div>
       <div class="stat-value" id="statTotal">0</div>
       <div class="stat-sub" id="statTotalSub">—</div>
     </div>
-    <div class="stat-card pending">
-      <div class="stat-label">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-        Pending
-      </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>Pending</div>
       <div class="stat-value" id="statPending">0</div>
       <div class="stat-sub" id="statPendingSub">—</div>
     </div>
-    <div class="stat-card interviews">
-      <div class="stat-label">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Interviews
-      </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Interviews</div>
       <div class="stat-value" id="statInterviews">0</div>
       <div class="stat-sub" id="statInterviewsSub">—</div>
     </div>
-    <div class="stat-card offers">
-      <div class="stat-label">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
-        Offers
-      </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Offers</div>
       <div class="stat-value" id="statOffers">0</div>
       <div class="stat-sub" id="statOffersSub">—</div>
     </div>
-    <div class="stat-card rejected">
-      <div class="stat-label">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        Rejected
-      </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Rejected</div>
       <div class="stat-value" id="statRejected">0</div>
       <div class="stat-sub" id="statRejectedSub">—</div>
     </div>
-    <div class="stat-card accepted">
-      <div class="stat-label">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
-        Accepted
-      </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>Accepted</div>
       <div class="stat-value" id="statAccepted">0</div>
       <div class="stat-sub" id="statAcceptedSub">—</div>
     </div>
   </div>
 
-  <!-- Add Entry Form -->
+  <!-- Add Form -->
   <div class="form-panel" id="formPanel">
     <div class="form-panel-header" onclick="toggleForm()">
-      <div class="form-panel-title">
-        <div class="dot"></div>
-        Add New Application
-      </div>
-      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      <div class="form-panel-title"><div class="pulse-dot"></div>Add New Application</div>
+      <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform var(--transition)"><path d="M6 9l6 6 6-6"/></svg>
     </div>
     <div class="form-body">
       <div class="form-grid">
@@ -997,7 +562,7 @@
         </div>
         <div class="form-group">
           <label for="addStatus">Status</label>
-          <select id="addStatus" class="filter-select">
+          <select id="addStatus">
             <option value="Applied">Applied</option>
             <option value="Phone Screen">Phone Screen</option>
             <option value="Interview">Interview</option>
@@ -1007,98 +572,125 @@
           </select>
         </div>
         <div class="form-group full">
-          <label for="addWebsite">Company Website <span style="font-size:10.5px;color:var(--text-muted);font-weight:400">(for logo — optional)</span></label>
-          <input type="url" id="addWebsite" placeholder="e.g. stripe.com or https://stripe.com" autocomplete="off">
+          <label for="addWebsite">Website <span style="font-size:9px;color:var(--text-muted);font-weight:400">(for logo)</span></label>
+          <input type="url" id="addWebsite" placeholder="e.g. stripe.com" autocomplete="off">
         </div>
         <div class="form-group full">
           <label for="addNotes">Notes</label>
-          <textarea id="addNotes" placeholder="Add any notes, contacts, or follow-up reminders…"></textarea>
+          <textarea id="addNotes" placeholder="Add notes, contacts, follow-ups…"></textarea>
         </div>
       </div>
       <div class="form-actions">
         <button class="btn btn-ghost" onclick="clearForm()">Clear</button>
         <button class="btn btn-primary" onclick="addEntry()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add Application
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Table Panel -->
-  <div class="table-panel">
-    <div class="table-toolbar">
-      <div class="search-wrap">
-        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="search-input" id="searchInput" placeholder="Search company or position…" oninput="renderTable()">
-      </div>
-      <div class="filter-row">
-        <button class="btn-focus btn-sm" id="btnFocusToggle" onclick="toggleFocus()" title="Focus Mode (Cmd+Shift+F)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-          Focus
-        </button>
-        <select class="filter-select" id="filterStatus" onchange="renderTable()">
-          <option value="">All Statuses</option>
-          <option value="Applied">Applied</option>
-          <option value="Phone Screen">Phone Screen</option>
-          <option value="Interview">Interview</option>
-          <option value="Offer">Offer</option>
-          <option value="Rejected">Rejected</option>
-          <option value="Accepted">Accepted</option>
-        </select>
-        <div class="date-filter-group">
-          <input type="date" class="date-input" id="filterFrom" onchange="renderTable()" title="From date">
-          <span>→</span>
-          <input type="date" class="date-input" id="filterTo" onchange="renderTable()" title="To date">
+  <!-- View Container -->
+  <div class="view-container">
+
+    <!-- TABLE VIEW -->
+    <div class="view-panel active visible" id="viewTable">
+      <div class="table-panel">
+        <div class="table-toolbar">
+          <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search company or position…" oninput="renderTable()">
+          </div>
+          <div class="filter-row">
+            <select id="filterStatus" onchange="renderTable()">
+              <option value="">All Statuses</option>
+              <option value="Applied">Applied</option>
+              <option value="Phone Screen">Phone Screen</option>
+              <option value="Interview">Interview</option>
+              <option value="Offer">Offer</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Accepted">Accepted</option>
+            </select>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="date" id="filterFrom" onchange="renderTable()" style="min-width:110px;padding:7px 10px;font-size:11px" title="From">
+              <span style="color:var(--text-muted);font-size:11px">→</span>
+              <input type="date" id="filterTo" onchange="renderTable()" style="min-width:110px;padding:7px 10px;font-size:11px" title="To">
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="clearFilters()">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Clear
+            </button>
+          </div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="clearFilters()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          Clear
-        </button>
+        <div class="table-meta">
+          <span id="tableCount">Loading…</span>
+          <span id="tableSortInfo"></span>
+        </div>
+        <div class="table-scroll">
+          <table id="jobTable">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="company" onclick="sortBy('company')">Company <span class="sort-icon">⌄</span></th>
+                <th class="sortable" data-col="position" onclick="sortBy('position')">Position <span class="sort-icon">⌄</span></th>
+                <th class="sortable" data-col="date" onclick="sortBy('date')">Date Applied <span class="sort-icon">⌄</span></th>
+                <th>Status</th>
+                <th class="sortable" data-col="days" onclick="sortBy('days')">Days <span class="sort-icon">⌄</span></th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty-state" style="display:none">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">No applications found</div>
+          <div class="empty-sub">Try adjusting your search or filters</div>
+        </div>
       </div>
     </div>
-    <div class="table-meta">
-      <span id="tableCount">Loading…</span>
-      <span id="tableSortInfo"></span>
+
+    <!-- KANBAN VIEW -->
+    <div class="view-panel" id="viewKanban">
+      <div class="kanban-board" id="kanbanBoard"></div>
     </div>
-    <div class="table-scroll">
-      <table id="jobTable">
-        <thead>
-          <tr>
-            <th class="sortable" data-col="company" onclick="sortBy('company')">
-              Company <span class="sort-icon">⌄</span>
-            </th>
-            <th class="sortable" data-col="position" onclick="sortBy('position')">
-              Position <span class="sort-icon">⌄</span>
-            </th>
-            <th class="sortable" data-col="date" onclick="sortBy('date')">
-              Date Applied <span class="sort-icon">⌄</span>
-            </th>
-            <th>Status</th>
-            <th class="sortable" data-col="days" onclick="sortBy('days')">
-              Days Since <span class="sort-icon">⌄</span>
-            </th>
-            <th>Notes</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
+
+    <!-- ANALYTICS VIEW -->
+    <div class="view-panel" id="viewAnalytics">
+      <div class="analytics-grid">
+        <div class="analytics-card full">
+          <h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Pipeline Funnel</h3>
+          <div class="chart-wrap"><canvas id="funnelChart"></canvas></div>
+        </div>
+        <div class="analytics-card">
+          <h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>Distribution</h3>
+          <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
+        </div>
+        <div class="analytics-card">
+          <h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Weekly Trend</h3>
+          <div class="chart-wrap"><canvas id="weeklyChart"></canvas></div>
+        </div>
+        <div class="analytics-card full">
+          <div class="analytics-stats" id="analyticsStats">
+            <div class="analytics-stat"><div class="as-value" id="asResponseRate">0%</div><div class="as-label">Response Rate</div></div>
+            <div class="analytics-stat"><div class="as-value" id="asAvgResponse">0d</div><div class="as-label">Avg Response</div></div>
+            <div class="analytics-stat"><div class="as-value" id="asConversion">0%</div><div class="as-label">Interview → Offer</div></div>
+            <div class="analytics-stat"><div class="as-value" id="asSuccess">0%</div><div class="as-label">Success Rate</div></div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="emptyState" class="empty-state" style="display:none">
-      <div class="empty-icon">🔍</div>
-      <div class="empty-title">No applications found</div>
-      <div class="empty-sub">Try adjusting your search or filters</div>
-    </div>
+
   </div>
 </main>
 
-<!-- Edit Modal -->
-<div class="modal-backdrop" id="editModal" style="display:none" onclick="closeModalOnBackdrop(event)">
+<!-- ═══ EDIT MODAL ═══ -->
+<div class="modal-backdrop" id="editModal">
+  <div class="backdrop-bg" onclick="closeModal()"></div>
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-logo-wrap">
-        <div id="modalLogo" style="flex-shrink:0"></div>
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+        <div id="modalLogo"></div>
         <div class="modal-title" id="modalTitle">Edit Application</div>
       </div>
       <button class="close-btn" onclick="closeModal()">✕</button>
@@ -1119,7 +711,7 @@
         </div>
         <div class="form-group">
           <label for="editStatus">Status</label>
-          <select id="editStatus" class="filter-select">
+          <select id="editStatus">
             <option value="Applied">Applied</option>
             <option value="Phone Screen">Phone Screen</option>
             <option value="Interview">Interview</option>
@@ -1129,7 +721,7 @@
           </select>
         </div>
         <div class="form-group full">
-          <label for="editWebsite">Company Website <span style="font-size:10.5px;color:var(--text-muted);font-weight:400">(for logo — optional)</span></label>
+          <label for="editWebsite">Website</label>
           <input type="url" id="editWebsite" placeholder="e.g. stripe.com">
         </div>
         <div class="form-group full">
@@ -1140,7 +732,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" onclick="deleteEntry()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/><path d="M10,11v6M14,11v6"/><path d="M9,6V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/><path d="M10,11v6M14,11v6"/><path d="M9,6V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/></svg>
         Delete
       </button>
       <div style="display:flex;gap:10px">
@@ -1151,551 +743,396 @@
   </div>
 </div>
 
-<!-- Toast Container -->
+<!-- ═══ COMMAND PALETTE ═══ -->
+<div class="cmdk-backdrop" id="cmdkBackdrop">
+  <div class="backdrop-bg" onclick="toggleCmdk()"></div>
+  <div class="cmdk-modal">
+    <div class="cmdk-input-wrap">
+      <svg class="cmdk-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="cmdk-input" id="cmdkInput" placeholder="Search commands…" autocomplete="off">
+    </div>
+    <div class="cmdk-results" id="cmdkResults"></div>
+  </div>
+</div>
+
+<!-- ═══ TOASTS ═══ -->
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'jobtrack_entries';
-const FOCUS_KEY = 'jobtrack_focus';
-let entries = [];
-let editingId = null;
-let sortCol = 'date';
-let sortDir = 'desc';
-let focusModeEnabled = false;
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════════════════
+const STORAGE_KEY='pipeline_entries';
+const THEME_KEY='pipeline_theme';
+let entries=[];
+let editingId=null;
+let sortCol='date',sortDir='desc';
+let currentView='table';
+let funnelChart=null,donutChart=null,weeklyChart=null;
+let cmdkIndex=0;
 
-// Per-company logo failure cache (key: lowercased company name)
-const logoFailCache = {};
-
-// ── Sample Data ────────────────────────────────────────────────────────────
-const SAMPLE_DATA = [
-  { id: uid(), company: 'Stripe',      position: 'Senior Software Engineer', date: daysAgo(2),  status: 'Interview',    website: 'stripe.com',      notes: 'Recruiter screen done. Technical round scheduled for next week with the payments team.' },
-  { id: uid(), company: 'Linear',      position: 'Product Engineer',          date: daysAgo(5),  status: 'Phone Screen', website: 'linear.app',      notes: 'Had a great call with Karri. Loves the portfolio. Waiting on next steps.' },
-  { id: uid(), company: 'Vercel',      position: 'Staff Engineer',            date: daysAgo(8),  status: 'Applied',      website: 'vercel.com',      notes: 'Applied through careers page. Role closes end of month.' },
-  { id: uid(), company: 'Figma',       position: 'Engineering Manager',       date: daysAgo(14), status: 'Rejected',     website: 'figma.com',       notes: 'Got to final round. Went with internal candidate.' },
-  { id: uid(), company: 'Notion',      position: 'Frontend Engineer',         date: daysAgo(21), status: 'Offer',        website: 'notion.so',       notes: 'Offer received: $190k base + equity. Deadline to respond is June 10.' },
-  { id: uid(), company: 'Loom',        position: 'Full-Stack Engineer',        date: daysAgo(30), status: 'Rejected',     website: 'loom.com',        notes: 'Form rejection email. No feedback provided.' },
-  { id: uid(), company: 'Retool',      position: 'React Engineer',            date: daysAgo(11), status: 'Interview',    website: 'retool.com',      notes: 'Two rounds done. Waiting on take-home.' },
-  { id: uid(), company: 'Supabase',    position: 'Developer Advocate',        date: daysAgo(3),  status: 'Applied',      website: 'supabase.com',    notes: 'Great open-source community, excited about this role.' },
-  { id: uid(), company: 'PlanetScale', position: 'Platform Engineer',         date: daysAgo(45), status: 'Accepted',     website: 'planetscale.com', notes: 'Accepted the offer! Start date July 7th. Base $210k.' },
-  { id: uid(), company: 'Clerk',       position: 'Senior Frontend Engineer',  date: daysAgo(7),  status: 'Phone Screen', website: 'clerk.com',       notes: 'CTO reached out on LinkedIn. Quick intro call scheduled.' },
-  { id: uid(), company: 'Resend',      position: 'Engineer',                  date: daysAgo(1),  status: 'Applied',      website: 'resend.dev',      notes: 'Small team, huge upside. Cold applied via email to zeno@resend.dev.' },
-  { id: uid(), company: 'Railway',     position: 'Infrastructure Engineer',   date: daysAgo(18), status: 'Rejected',     website: 'railway.app',     notes: 'Did not pass the system design round. Asked for feedback.' },
+const SAMPLE_DATA=[
+  {id:uid(),company:'Stripe',position:'Senior Software Engineer',date:daysAgo(2),status:'Interview',website:'stripe.com',notes:'Technical round next week with payments team.'},
+  {id:uid(),company:'Linear',position:'Product Engineer',date:daysAgo(5),status:'Phone Screen',website:'linear.app',notes:'Great call with Karri. Waiting on next steps.'},
+  {id:uid(),company:'Vercel',position:'Staff Engineer',date:daysAgo(8),status:'Applied',website:'vercel.com',notes:'Role closes end of month.'},
+  {id:uid(),company:'Figma',position:'Engineering Manager',date:daysAgo(14),status:'Rejected',website:'figma.com',notes:'Final round. Went with internal candidate.'},
+  {id:uid(),company:'Notion',position:'Frontend Engineer',date:daysAgo(21),status:'Offer',website:'notion.so',notes:'$190k base + equity. Deadline June 10.'},
+  {id:uid(),company:'Supabase',position:'Developer Advocate',date:daysAgo(3),status:'Applied',website:'supabase.com',notes:'Excited about this role.'},
+  {id:uid(),company:'PlanetScale',position:'Platform Engineer',date:daysAgo(45),status:'Accepted',website:'planetscale.com',notes:'Accepted! Starting July 7. $210k.'},
+  {id:uid(),company:'Clerk',position:'Senior Frontend Engineer',date:daysAgo(7),status:'Phone Screen',website:'clerk.com',notes:'CTO reached out on LinkedIn.'},
+  {id:uid(),company:'Retool',position:'React Engineer',date:daysAgo(11),status:'Interview',website:'retool.com',notes:'Take-home due Friday.'},
+  {id:uid(),company:'Railway',position:'Infrastructure Engineer',date:daysAgo(18),status:'Rejected',website:'railway.app',notes:'Didn\'t pass system design.'},
+  {id:uid(),company:'Loom',position:'Full-Stack Engineer',date:daysAgo(30),status:'Rejected',website:'loom.com',notes:'Form rejection.'},
+  {id:uid(),company:'Resend',position:'Engineer',date:daysAgo(1),status:'Applied',website:'resend.dev',notes:'Small team, huge upside.'},
 ];
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+// ══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().split('T')[0]}
+function daysBetween(d){const t=new Date(d),n=new Date();n.setHours(0,0,0,0);t.setHours(0,0,0,0);return Math.max(0,Math.round((n-t)/86400000))}
+function formatDate(d){const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+function badgeClass(s){return{'Applied':'badge-applied','Phone Screen':'badge-phone','Interview':'badge-interview','Offer':'badge-offer','Rejected':'badge-rejected','Accepted':'badge-accepted'}[s]||'badge-applied'}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+const AVATAR_COLORS=['#0066cc','#5856d6','#34c759','#e8a838','#ff3b30','#30d158','#8b5cf6','#0071e3','#ff6482','#ff9f0a'];
+function nameHash(n){let h=0;for(let i=0;i<n.length;i++)h=(Math.imul(31,h)+n.charCodeAt(i))|0;return Math.abs(h)}
+function avatarColor(n){return AVATAR_COLORS[nameHash(n)%AVATAR_COLORS.length]}
+function extractDomain(w){if(!w)return'';try{const u=/^https?:\/\//i.test(w)?w:'https://'+w;return new URL(u).hostname}catch(_){return w.replace(/^https?:\/\//i,'').split('/')[0]}}
+function guessDomain(c){return c.toLowerCase().replace(/[^a-z0-9]/g,'')+'.com'}
+const logoFailCache={};
+function onLogoError(img){const c=img.dataset.company;logoFailCache[c.toLowerCase()]=true;const sz=parseInt(img.getAttribute('width')||'24',10);const fs=Math.floor(sz*0.46);const cl=avatarColor(c);const sp=document.createElement('span');sp.className='letter-avatar';sp.style.cssText=`width:${sz}px;height:${sz}px;background:${cl};font-size:${fs}px`;sp.textContent=c.charAt(0).toUpperCase();if(img.parentNode)img.parentNode.replaceChild(sp,img)}
+function logoHtml(c,w,sz){sz=sz||24;const key=c.toLowerCase();const fs=Math.floor(sz*0.46);const cl=avatarColor(c);const lt=c.charAt(0).toUpperCase();const br=sz>=36?'8px':'6px';if(logoFailCache[key])return`<span class="letter-avatar" style="width:${sz}px;height:${sz}px;background:${cl};font-size:${fs}px;border-radius:${br}">${lt}</span>`;const dom=w?extractDomain(w):guessDomain(c);return`<img src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(dom)}&sz=64" class="company-logo" width="${sz}" height="${sz}" style="border-radius:${br}" alt="${esc(lt)}" data-company="${esc(c)}" onerror="onLogoError(this)" loading="lazy">`}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════════════════════════════════════════
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme',theme);
+  localStorage.setItem(THEME_KEY,theme);
+  // Update particles opacity
+  const particles=document.getElementById('particles');
+  if(particles)particles.style.opacity=theme==='dark'?'0.5':'0.35';
+  // Rebuild charts if visible (colors change)
+  if(currentView==='analytics')setTimeout(renderAnalytics,100);
+}
+function toggleTheme(){
+  const current=document.documentElement.getAttribute('data-theme');
+  applyTheme(current==='dark'?'light':'dark');
 }
 
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().split('T')[0];
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFETTI — party on accepted!
+// ══════════════════════════════════════════════════════════════════════════════
+function celebrate(){
+  if(typeof confetti!=='function')return;
+  const duration=2500;
+  const end=Date.now()+duration;
+  (function frame(){
+    confetti({
+      particleCount:4,startVelocity:25,spread:70,origin:{x:0.5,y:0.4},
+      colors:['#34c759','#5856d6','#0066cc','#ff9f0a','#ff3b30','#30d158'],
+      shapes:['square','circle'],
+      scalar:1.1
+    });
+    if(Date.now()<end)requestAnimationFrame(frame)
+  })();
+  // Second burst from side
+  setTimeout(()=>{
+    confetti({particleCount:25,spread:100,origin:{x:0,y:0.5},colors:['#34c759','#5856d6','#0066cc'],angle:60});
+    confetti({particleCount:25,spread:100,origin:{x:1,y:0.5},colors:['#ff9f0a','#ff3b30','#30d158'],angle:120});
+  },300)
 }
 
-function daysBetween(dateStr) {
-  const then = new Date(dateStr);
-  const now = new Date();
-  now.setHours(0,0,0,0);
-  then.setHours(0,0,0,0);
-  return Math.max(0, Math.round((now - then) / 86400000));
-}
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function badgeClass(status) {
-  const map = {
-    'Applied': 'badge-applied', 'Phone Screen': 'badge-phone',
-    'Interview': 'badge-interview', 'Offer': 'badge-offer',
-    'Rejected': 'badge-rejected', 'Accepted': 'badge-accepted'
-  };
-  return map[status] || 'badge-applied';
-}
-
-function esc(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── Logo / Letter Avatar ───────────────────────────────────────────────────
-const AVATAR_COLORS = [
-  '#4f6ef7','#7c3aed','#10b981','#f59e0b',
-  '#ef4444','#14b8a6','#8b5cf6','#3b82f6',
-  '#ec4899','#f97316'
-];
-
-function nameHash(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) {
-    h = (Math.imul(31, h) + name.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
-function avatarColor(name) {
-  return AVATAR_COLORS[nameHash(name) % AVATAR_COLORS.length];
-}
-
-function extractDomain(website) {
-  if (!website) return '';
-  try {
-    const url = /^https?:\/\//i.test(website) ? website : 'https://' + website;
-    return new URL(url).hostname;
-  } catch (_) {
-    return website.replace(/^https?:\/\//i, '').split('/')[0];
-  }
-}
-
-function guessDomain(company) {
-  return company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
-}
-
-function onLogoError(img) {
-  const company = img.dataset.company;
-  logoFailCache[company.toLowerCase()] = true;
-  const size = parseInt(img.getAttribute('width') || '24', 10);
-  const fontSize = Math.floor(size * 0.46);
-  const color = avatarColor(company);
-  const letter = company.charAt(0).toUpperCase();
-  const span = document.createElement('span');
-  span.className = 'letter-avatar';
-  span.style.cssText = `width:${size}px;height:${size}px;background:${color};font-size:${fontSize}px`;
-  span.textContent = letter;
-  if (img.parentNode) img.parentNode.replaceChild(span, img);
-}
-
-function logoHtml(company, website, size) {
-  size = size || 24;
-  const key = company.toLowerCase();
-  const fontSize = Math.floor(size * 0.46);
-  const color = avatarColor(company);
-  const letter = company.charAt(0).toUpperCase();
-  const borderRadius = size >= 36 ? '8px' : '6px';
-
-  if (logoFailCache[key]) {
-    return `<span class="letter-avatar" style="width:${size}px;height:${size}px;background:${color};font-size:${fontSize}px;border-radius:${borderRadius}">${letter}</span>`;
-  }
-
-  const domain = website ? extractDomain(website) : guessDomain(company);
-  const src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64';
-
-  return `<img src="${src}" class="company-logo" width="${size}" height="${size}" style="border-radius:${borderRadius}" alt="${esc(letter)}" data-company="${esc(company)}" onerror="onLogoError(this)" loading="lazy">`;
-}
-
-// ── Persistence ────────────────────────────────────────────────────────────
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-}
-
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // Ensure legacy entries without website field still work
-      entries = parsed.map(e => ({ website: '', ...e }));
-    } else {
-      entries = SAMPLE_DATA;
-      save();
-    }
-  } catch (e) {
-    entries = SAMPLE_DATA;
-    save();
+// Check if status changed to Accepted
+function checkCelebration(entry,prevStatus){
+  if(entry&&entry.status==='Accepted'&&prevStatus!=='Accepted'){
+    celebrate();
   }
 }
 
-// ── Stats ──────────────────────────────────────────────────────────────────
-function renderStats() {
-  const total     = entries.length;
-  const pending   = entries.filter(e => e.status === 'Applied').length;
-  const phone     = entries.filter(e => e.status === 'Phone Screen').length;
-  const interviews= entries.filter(e => e.status === 'Interview').length;
-  const offers    = entries.filter(e => e.status === 'Offer').length;
-  const rejected  = entries.filter(e => e.status === 'Rejected').length;
-  const accepted  = entries.filter(e => e.status === 'Accepted').length;
-  const rejRate   = total > 0 ? Math.round(rejected / total * 100) : 0;
-  const activeWins= pending + phone + interviews;
-
-  setEl('statTotal', total);
-  setEl('statTotalSub', total === 0 ? 'Get started!' : `${activeWins} active pipeline`);
-
-  setEl('statPending', pending);
-  setEl('statPendingSub', phone > 0 ? `+ ${phone} phone screens` : 'awaiting response');
-
-  setEl('statInterviews', interviews);
-  setEl('statInterviewsSub', interviews === 1 ? '1 in progress' : `${interviews} in progress`);
-
-  setEl('statOffers', offers);
-  setEl('statOffersSub', offers === 0 ? 'keep going!' : '🎉 congrats!');
-
-  setEl('statRejected', rejected);
-  const rejEl = document.getElementById('statRejectedSub');
-  rejEl.textContent = rejRate + '% rejection rate';
-  rejEl.className = 'stat-sub' + (rejRate > 50 ? ' highlight' : '');
-
-  setEl('statAccepted', accepted);
-  setEl('statAcceptedSub', accepted > 0 ? '🏆 landed a role!' : '—');
+// ══════════════════════════════════════════════════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════════════════════════════════════════════════
+function initParticles(){
+  const c=document.getElementById('particles'),ctx=c.getContext('2d');
+  let w,h,particles=[];
+  function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight}
+  resize();window.addEventListener('resize',resize);
+  const count=Math.min(40,Math.floor(w*h/30000));
+  for(let i=0;i<count;i++)particles.push({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-0.5)*0.2,vy:(Math.random()-0.5)*0.2,r:Math.random()*1.2+0.3});
+  function draw(){
+    ctx.clearRect(0,0,w,h);const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+    const base=isDark?'79,142,247':'0,102,204';
+    particles.forEach((p,i)=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=w;if(p.x>w)p.x=0;if(p.y<0)p.y=h;if(p.y>h)p.y=0;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${base},${0.08+Math.sin(Date.now()/4000+i)*0.04})`;
+      ctx.fill();
+      for(let j=i+1;j<particles.length;j++){
+        const dx=p.x-particles[j].x,dy=p.y-particles[j].y,dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<100){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(particles[j].x,particles[j].y);ctx.strokeStyle=`rgba(${base},${0.04*(1-dist/100)})`;ctx.lineWidth=0.5;ctx.stroke()}
+      }
+    });
+    requestAnimationFrame(draw)
+  }
+  draw();
 }
 
-function setEl(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
+// ══════════════════════════════════════════════════════════════════════════════
+// PERSISTENCE
+// ══════════════════════════════════════════════════════════════════════════════
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(entries))}
+function load(){
+  try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){entries=JSON.parse(raw).map(e=>({website:'',...e}))}else{entries=SAMPLE_DATA;save()}}catch(e){entries=SAMPLE_DATA;save()}
 }
 
-// ── Table ──────────────────────────────────────────────────────────────────
-function getFiltered() {
-  const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  const status = document.getElementById('filterStatus').value;
-  const from = document.getElementById('filterFrom').value;
-  const to = document.getElementById('filterTo').value;
+// ══════════════════════════════════════════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════════════════════════════════════════
+function renderStats(){
+  const total=entries.length,pending=entries.filter(e=>e.status==='Applied').length;
+  const phone=entries.filter(e=>e.status==='Phone Screen').length;
+  const interviews=entries.filter(e=>e.status==='Interview').length;
+  const offers=entries.filter(e=>e.status==='Offer').length;
+  const rejected=entries.filter(e=>e.status==='Rejected').length;
+  const accepted=entries.filter(e=>e.status==='Accepted').length;
+  const rejRate=total>0?Math.round(rejected/total*100):0;
+  const activeWins=pending+phone+interviews;
 
-  return entries.filter(e => {
-    if (q && !e.company.toLowerCase().includes(q) && !e.position.toLowerCase().includes(q)) return false;
-    if (status && e.status !== status) return false;
-    if (from && e.date < from) return false;
-    if (to && e.date > to) return false;
-    return true;
+  const targets={statTotal:total,statPending:pending,statInterviews:interviews,statOffers:offers,statRejected:rejected,statAccepted:accepted};
+  Object.entries(targets).forEach(([id,val])=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const start=parseInt(el.textContent)||0;
+    gsap.to(el,{duration:0.7,ease:'power2.out',textContent:val,roundProps:'textContent',delay:0.05})
   });
+  setEl('statTotalSub',total===0?'Get started!':`${activeWins} active`);
+  setEl('statPendingSub',phone>0?`+${phone} screens`:'awaiting');
+  setEl('statInterviewsSub',interviews===1?'1 active':`${interviews} active`);
+  setEl('statOffersSub',offers===0?'keep going!':'🎉 congrats!');
+  setEl('statRejectedSub',rejRate+'% rejected');
+  setEl('statAcceptedSub',accepted>0?'🏆 landed!':'—');
 }
+function setEl(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
 
-function getSorted(list) {
-  return [...list].sort((a, b) => {
-    let va, vb;
-    if (sortCol === 'company') { va = a.company.toLowerCase(); vb = b.company.toLowerCase(); }
-    else if (sortCol === 'position') { va = a.position.toLowerCase(); vb = b.position.toLowerCase(); }
-    else if (sortCol === 'date') { va = a.date; vb = b.date; }
-    else if (sortCol === 'days') { va = daysBetween(a.date); vb = daysBetween(b.date); }
-    else { va = a.date; vb = b.date; }
-
-    if (va < vb) return sortDir === 'asc' ? -1 : 1;
-    if (va > vb) return sortDir === 'asc' ? 1 : -1;
-    return 0;
-  });
+// ══════════════════════════════════════════════════════════════════════════════
+// TABLE
+// ══════════════════════════════════════════════════════════════════════════════
+function getFiltered(){
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  const s=document.getElementById('filterStatus').value;
+  const f=document.getElementById('filterFrom').value,t=document.getElementById('filterTo').value;
+  return entries.filter(e=>{if(q&&!e.company.toLowerCase().includes(q)&&!e.position.toLowerCase().includes(q))return false;if(s&&e.status!==s)return false;if(f&&e.date<f)return false;if(t&&e.date>t)return false;return true})
 }
-
-function sortBy(col) {
-  if (sortCol === col) {
-    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-  } else {
-    sortCol = col;
-    sortDir = col === 'date' ? 'desc' : 'asc';
-  }
-  updateSortHeaders();
-  renderTable();
-}
-
-function updateSortHeaders() {
-  document.querySelectorAll('th[data-col]').forEach(th => {
-    th.classList.remove('sort-asc', 'sort-desc');
-    if (th.dataset.col === sortCol) {
-      th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
-    }
-  });
-  const el = document.getElementById('tableSortInfo');
-  if (el) el.textContent = `Sorted by ${sortCol} (${sortDir})`;
-}
-
-function renderTable() {
-  const filtered = getFiltered();
-  const sorted = getSorted(filtered);
-  const tbody = document.getElementById('tableBody');
-  const emptyState = document.getElementById('emptyState');
-  const tableEl = document.getElementById('jobTable');
-  const countEl = document.getElementById('tableCount');
-
-  countEl.innerHTML = `Showing <strong>${sorted.length}</strong> of <strong>${entries.length}</strong> applications`;
-
-  if (sorted.length === 0) {
-    tbody.innerHTML = '';
-    emptyState.style.display = 'block';
-    tableEl.style.display = 'none';
-    return;
-  }
-
-  emptyState.style.display = 'none';
-  tableEl.style.display = 'table';
-
-  tbody.innerHTML = sorted.map(e => {
-    const days = daysBetween(e.date);
-    let daysClass = 'fresh';
-    if (days > 30) daysClass = 'stale';
-    else if (days > 14) daysClass = 'aging';
-
-    const notesPreview = e.notes ? `<span class="notes-preview" title="${esc(e.notes)}">${esc(e.notes)}</span>` : '<span style="color:var(--text-muted);font-size:12px">—</span>';
-    const logo = logoHtml(e.company, e.website || '', 24);
-
-    return `<tr onclick="openEdit('${e.id}')">
-      <td class="td-company">
-        <div class="company-cell">${logo}<span>${esc(e.company)}</span></div>
-      </td>
-      <td class="td-position td-date">${esc(e.position)}</td>
+function getSorted(list){return[...list].sort((a,b)=>{let va,vb;if(sortCol==='company'){va=a.company.toLowerCase();vb=b.company.toLowerCase()}else if(sortCol==='position'){va=a.position.toLowerCase();vb=b.position.toLowerCase()}else if(sortCol==='date'){va=a.date;vb=b.date}else if(sortCol==='days'){va=daysBetween(a.date);vb=daysBetween(b.date)}else{va=a.date;vb=b.date}return va<vb?sortDir==='asc'?-1:1:va>vb?sortDir==='asc'?1:-1:0})}
+function sortBy(col){if(sortCol===col)sortDir=sortDir==='asc'?'desc':'asc';else{sortCol=col;sortDir=col==='date'?'desc':'asc'}updateSortHeaders();renderTable()}
+function updateSortHeaders(){document.querySelectorAll('th[data-col]').forEach(th=>{th.classList.remove('sort-asc','sort-desc');if(th.dataset.col===sortCol)th.classList.add(sortDir==='asc'?'sort-asc':'sort-desc')});const e=document.getElementById('tableSortInfo');if(e)e.textContent=`Sorted by ${sortCol} (${sortDir})`}
+function renderTable(){
+  const filtered=getFiltered(),sorted=getSorted(filtered);
+  const tbody=document.getElementById('tableBody'),empty=document.getElementById('emptyState'),table=document.getElementById('jobTable'),c=document.getElementById('tableCount');
+  c.innerHTML=`Showing <strong>${sorted.length}</strong> of <strong>${entries.length}</strong> applications`;
+  if(sorted.length===0){tbody.innerHTML='';empty.style.display='block';table.style.display='none';return}
+  empty.style.display='none';table.style.display='table';
+  tbody.innerHTML=sorted.map(e=>{
+    const days=daysBetween(e.date);let dc='fresh';if(days>30)dc='stale';else if(days>14)dc='aging';
+    const notes=e.notes?`<span class="notes-preview" title="${esc(e.notes)}">${esc(e.notes)}</span>`:'<span style="color:var(--text-muted);font-size:11px">—</span>';
+    return`<tr data-id="${e.id}">
+      <td><div class="company-cell"><span class="td-company">${logoHtml(e.company,e.website||'',22)} ${esc(e.company)}</span></div></td>
+      <td class="td-position">${esc(e.position)}</td>
       <td class="td-date">${formatDate(e.date)}</td>
       <td><span class="badge ${badgeClass(e.status)}">${esc(e.status)}</span></td>
-      <td class="td-days ${daysClass}">${days}d</td>
-      <td>${notesPreview}</td>
+      <td class="td-days ${dc}">${days}d</td>
+      <td>${notes}</td>
       <td class="td-actions" onclick="event.stopPropagation()">
-        <button class="action-btn" onclick="openEdit('${e.id}')" title="Edit">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>
-        <button class="action-btn del" onclick="quickDelete('${e.id}')" title="Delete">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/></svg>
-        </button>
+        <button class="action-btn" onclick="openEdit('${e.id}')" title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="action-btn del" onclick="quickDelete('${e.id}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/></svg></button>
       </td>
-    </tr>`;
+    </tr>`
   }).join('');
+  gsap.fromTo('#tableBody tr',{opacity:0,y:6},{opacity:1,y:0,duration:0.25,stagger:0.02,ease:'power2.out'});
+  document.querySelectorAll('#tableBody tr').forEach(tr=>{tr.addEventListener('click',e=>{if(e.target.closest('.td-actions'))return;openEdit(tr.dataset.id)})})
 }
 
-// ── Form ───────────────────────────────────────────────────────────────────
-function openAddForm() {
-  const panel = document.getElementById('formPanel');
-  if (!panel.classList.contains('open')) {
-    panel.classList.add('open');
+// ══════════════════════════════════════════════════════════════════════════════
+// KANBAN
+// ══════════════════════════════════════════════════════════════════════════════
+const STATUS_COLS=['Applied','Phone Screen','Interview','Offer','Rejected','Accepted'];
+const STATUS_COLORS={Applied:['#0071e3','rgba(0,113,227,0.06)'],'Phone Screen':['#8b5cf6','rgba(139,92,246,0.06)'],Interview:['#e8a838','rgba(232,168,56,0.08)'],Offer:['#34c759','rgba(52,199,89,0.08)'],Rejected:['#ff3b30','rgba(255,59,48,0.06)'],Accepted:['#34c759','rgba(52,199,89,0.08)']};
+function renderKanban(){
+  document.getElementById('kanbanBoard').innerHTML=STATUS_COLS.map(s=>{
+    const items=entries.filter(e=>e.status===s);const [c,]=STATUS_COLORS[s];
+    return`<div class="kanban-col" data-status="${s}">
+      <div class="kanban-header"><div class="kanban-title"><span class="kanban-dot" style="background:${c}"></span>${s}</div><span class="kanban-count">${items.length}</span></div>
+      <div class="kanban-body" data-status="${s}" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        ${items.length===0?`<div class="kanban-empty">Drop here</div>`:items.map(e=>`<div class="kanban-card" draggable="true" data-id="${e.id}" ondragstart="onDragStart(event)" onclick="openEdit('${e.id}')"><div class="kanban-card-company">${logoHtml(e.company,e.website||'',18)}${esc(e.company)}</div><div class="kanban-card-position">${esc(e.position)}</div><div class="kanban-card-meta"><span class="badge ${badgeClass(e.status)}" style="font-size:9px;padding:1px 7px">${esc(e.status)}</span><span class="kanban-card-days">${daysBetween(e.date)}d</span></div></div>`).join('')}
+      </div></div>`
+  }).join('')
+}
+let dragId=null;
+function onDragStart(e){dragId=e.target.closest('.kanban-card')?.dataset.id;e.target.closest('.kanban-card')?.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
+function onDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';e.currentTarget.classList.add('drag-over')}
+function onDragLeave(e){e.currentTarget.classList.remove('drag-over')}
+function onDrop(e){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  document.querySelectorAll('.kanban-card.dragging').forEach(el=>el.classList.remove('dragging'));
+  if(!dragId)return;const ns=e.currentTarget.dataset.status;
+  const entry=entries.find(x=>x.id===dragId);
+  if(entry&&entry.status!==ns){
+    const prevStatus=entry.status;
+    entry.status=ns;save();renderStats();renderTable();renderKanban();
+    toast(`Moved ${entry.company} → ${ns}`,'success');
+    checkCelebration(entry,prevStatus);
   }
-  document.getElementById('addCompany').focus();
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  dragId=null;
 }
 
-function toggleForm() {
-  document.getElementById('formPanel').classList.toggle('open');
-}
+// ══════════════════════════════════════════════════════════════════════════════
+// ANALYTICS
+// ══════════════════════════════════════════════════════════════════════════════
+function renderAnalytics(){
+  if(typeof Chart==='undefined')return;
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const gridColor=isDark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)';
+  const tickColor=isDark?'#535970':'#aeaeb2';
+  const borderColor=isDark?'#11131e':'#ffffff';
 
-function clearForm() {
-  ['addCompany','addPosition','addNotes','addWebsite'].forEach(id => { document.getElementById(id).value = ''; });
-  document.getElementById('addStatus').value = 'Applied';
-  document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
-}
-
-function addEntry() {
-  const company  = document.getElementById('addCompany').value.trim();
-  const position = document.getElementById('addPosition').value.trim();
-  const date     = document.getElementById('addDate').value;
-  const status   = document.getElementById('addStatus').value;
-  const notes    = document.getElementById('addNotes').value.trim();
-  const website  = document.getElementById('addWebsite').value.trim();
-
-  if (!company) return shake('addCompany'), toast('Company name is required', 'error');
-  if (!position) return shake('addPosition'), toast('Position is required', 'error');
-  if (!date) return shake('addDate'), toast('Date is required', 'error');
-
-  const entry = { id: uid(), company, position, date, status, notes, website };
-  entries.unshift(entry);
-  save();
-  renderStats();
-  renderTable();
-  clearForm();
-  toast(`Added ${company} — ${position}`, 'success');
-
-  // highlight new row briefly
-  setTimeout(() => {
-    const firstRow = document.querySelector('#tableBody tr');
-    if (firstRow) firstRow.classList.add('new-row');
-    setTimeout(() => firstRow && firstRow.classList.remove('new-row'), 1500);
-  }, 50);
-}
-
-// ── Edit Modal ─────────────────────────────────────────────────────────────
-function openEdit(id) {
-  const e = entries.find(x => x.id === id);
-  if (!e) return;
-  editingId = id;
-
-  document.getElementById('editCompany').value  = e.company;
-  document.getElementById('editPosition').value = e.position;
-  document.getElementById('editDate').value     = e.date;
-  document.getElementById('editStatus').value   = e.status;
-  document.getElementById('editNotes').value    = e.notes || '';
-  document.getElementById('editWebsite').value  = e.website || '';
-  document.getElementById('modalTitle').textContent = `${e.company} — ${e.position}`;
-  document.getElementById('modalLogo').innerHTML = logoHtml(e.company, e.website || '', 40);
-  document.getElementById('editModal').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-  setTimeout(() => document.getElementById('editCompany').focus(), 80);
-}
-
-function closeModal() {
-  document.getElementById('editModal').style.display = 'none';
-  document.body.style.overflow = '';
-  editingId = null;
-}
-
-function closeModalOnBackdrop(e) {
-  if (e.target === document.getElementById('editModal')) closeModal();
-}
-
-function saveEdit() {
-  if (!editingId) return;
-  const company  = document.getElementById('editCompany').value.trim();
-  const position = document.getElementById('editPosition').value.trim();
-  const date     = document.getElementById('editDate').value;
-  const status   = document.getElementById('editStatus').value;
-  const notes    = document.getElementById('editNotes').value.trim();
-  const website  = document.getElementById('editWebsite').value.trim();
-
-  if (!company) return shake('editCompany'), toast('Company name is required', 'error');
-  if (!position) return shake('editPosition'), toast('Position is required', 'error');
-  if (!date) return shake('editDate'), toast('Date is required', 'error');
-
-  const idx = entries.findIndex(x => x.id === editingId);
-  if (idx === -1) return;
-  entries[idx] = { ...entries[idx], company, position, date, status, notes, website };
-  save();
-  renderStats();
-  renderTable();
-  closeModal();
-  toast(`Updated ${company}`, 'success');
-}
-
-function deleteEntry() {
-  if (!editingId) return;
-  const e = entries.find(x => x.id === editingId);
-  entries = entries.filter(x => x.id !== editingId);
-  save();
-  renderStats();
-  renderTable();
-  closeModal();
-  toast(`Deleted ${e ? e.company : 'entry'}`, 'info');
-}
-
-function quickDelete(id) {
-  const e = entries.find(x => x.id === id);
-  if (!e) return;
-  entries = entries.filter(x => x.id !== id);
-  save();
-  renderStats();
-  renderTable();
-  toast(`Deleted ${e.company}`, 'info');
-}
-
-// ── Filters ────────────────────────────────────────────────────────────────
-function clearFilters() {
-  document.getElementById('searchInput').value = '';
-  document.getElementById('filterStatus').value = '';
-  document.getElementById('filterFrom').value = '';
-  document.getElementById('filterTo').value = '';
-  renderTable();
-}
-
-// ── Export CSV ─────────────────────────────────────────────────────────────
-function exportCSV() {
-  const headers = ['Company', 'Position', 'Date Applied', 'Status', 'Days Since Applied', 'Website', 'Notes'];
-  const rows = entries.map(e => [
-    e.company, e.position, e.date, e.status, daysBetween(e.date), e.website || '', e.notes || ''
-  ]);
-
-  const csvContent = [headers, ...rows]
-    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `job-applications-${new Date().toISOString().split('T')[0]}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast('Exported to CSV', 'success');
-}
-
-// ── Toast ──────────────────────────────────────────────────────────────────
-function toast(msg, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  const icons = { success: '✓', error: '✕', info: 'ℹ' };
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.innerHTML = `<span style="opacity:0.7;font-size:13px">${icons[type]}</span>${esc(msg)}`;
-  container.appendChild(el);
-  setTimeout(() => {
-    el.style.animation = 'toastOut 0.2s ease forwards';
-    setTimeout(() => el.remove(), 220);
-  }, 2800);
-}
-
-// ── Shake animation ────────────────────────────────────────────────────────
-function shake(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.style.animation = 'none';
-  el.style.borderColor = 'var(--status-rejected)';
-  el.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
-  setTimeout(() => {
-    el.style.borderColor = '';
-    el.style.boxShadow = '';
-  }, 800);
-}
-
-// ── Focus Mode ─────────────────────────────────────────────────────────────
-function toggleFocus() {
-  focusModeEnabled = !focusModeEnabled;
-  applyFocusState();
-  localStorage.setItem(FOCUS_KEY, focusModeEnabled ? '1' : '0');
-}
-
-function applyFocusState() {
-  const body = document.body;
-  const btn = document.getElementById('btnFocusToggle');
-  if (focusModeEnabled) {
-    body.classList.add('focus-mode');
-    if (btn) { btn.classList.add('active'); btn.title = 'Exit Focus Mode (Esc)'; }
-  } else {
-    body.classList.remove('focus-mode');
-    if (btn) { btn.classList.remove('active'); btn.title = 'Focus Mode (Cmd+Shift+F)'; }
+  const counts=STATUS_COLS.map(s=>entries.filter(e=>e.status===s).length);
+  const funnelC=document.getElementById('funnelChart')?.getContext('2d');
+  if(funnelC){
+    if(funnelChart)funnelChart.destroy();
+    funnelChart=new Chart(funnelC,{type:'bar',data:{labels:STATUS_COLS,datasets:[{label:'Apps',data:counts,backgroundColor:[isDark?'rgba(79,142,247,0.7)':'rgba(0,113,227,0.7)',isDark?'rgba(160,101,247,0.7)':'rgba(139,92,246,0.7)','rgba(232,168,56,0.7)','rgba(52,199,89,0.7)','rgba(255,59,48,0.7)','rgba(52,199,89,0.7)'],borderColor:[isDark?'#4f8ef7':'#0071e3',isDark?'#a065f7':'#8b5cf6','#e8a838','#34c759','#ff3b30','#34c759'],borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:tickColor}},y:{grid:{color:gridColor},ticks:{color:tickColor,stepSize:1}}},animation:{duration:800,easing:'easeOutQuart'}}})
   }
+  const donutC=document.getElementById('donutChart')?.getContext('2d');
+  if(donutC){
+    if(donutChart)donutChart.destroy();
+    donutChart=new Chart(donutC,{type:'doughnut',data:{labels:STATUS_COLS,datasets:[{data:counts,backgroundColor:[isDark?'rgba(79,142,247,0.8)':'rgba(0,113,227,0.8)',isDark?'rgba(160,101,247,0.8)':'rgba(139,92,246,0.8)','rgba(232,168,56,0.8)','rgba(52,199,89,0.8)','rgba(255,59,48,0.8)','rgba(52,199,89,0.8)'],borderColor:borderColor,borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:tickColor,padding:12,font:{size:11},usePointStyle:true}}}},animation:{animateRotate:true}})
+  }
+  const weeklyC=document.getElementById('weeklyChart')?.getContext('2d');
+  if(weeklyC){
+    const weeks={};let now=new Date();for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i*7);weeks[d.toLocaleDateString('en-US',{month:'short',day:'numeric'})]=0}
+    entries.forEach(e=>{const d=new Date(e.date+'T00:00:00');const diff=Math.floor((now-d)/604800000);if(diff>=0&&diff<7){const dt=new Date(now);dt.setDate(dt.getDate()-diff*7);const key=dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});if(weeks[key]!==undefined)weeks[key]++}});
+    const accent=isDark?'#4f8ef7':'#0066cc';
+    if(weeklyChart)weeklyChart.destroy();
+    weeklyChart=new Chart(weeklyC,{type:'line',data:{labels:Object.keys(weeks),datasets:[{label:'Apps',data:Object.values(weeks),borderColor:accent,backgroundColor:isDark?'rgba(79,142,247,0.06)':'rgba(0,102,204,0.06)',fill:true,tension:0.4,pointBackgroundColor:accent,pointBorderColor:borderColor,pointBorderWidth:2,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:tickColor}},y:{grid:{color:gridColor},ticks:{color:tickColor,stepSize:1}}},animation:{duration:800,easing:'easeOutQuart'}}})
+  }
+  const responded=entries.filter(e=>e.status!=='Applied');const rr=entries.length>0?Math.round(responded.length/entries.length*100):0;
+  const ito=entries.filter(e=>e.status==='Offer'||e.status==='Accepted').length;const iv=entries.filter(e=>['Interview','Offer','Accepted','Rejected'].includes(e.status)).length;const conv=iv>0?Math.round(ito/iv*100):0;
+  const succ=entries.length>0?Math.round(entries.filter(e=>e.status==='Accepted').length/entries.length*100):0;
+  gsap.to('#asResponseRate',{duration:0.7,ease:'power2.out',textContent:`${rr}%`,roundProps:'textContent'});
+  gsap.to('#asAvgResponse',{duration:0.7,ease:'power2.out',textContent:entries.length>0?`${Math.round(responded.reduce((s,e)=>s+daysBetween(e.date),0)/Math.max(1,responded.length))}d`:'0d'});
+  gsap.to('#asConversion',{duration:0.7,ease:'power2.out',textContent:`${conv}%`,roundProps:'textContent'});
+  gsap.to('#asSuccess',{duration:0.7,ease:'power2.out',textContent:`${succ}%`,roundProps:'textContent'});
 }
 
-// ── Keyboard shortcuts ─────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  // Escape: close modal first; if no modal and in focus mode, exit focus
-  if (e.key === 'Escape') {
-    const modal = document.getElementById('editModal');
-    if (modal && modal.style.display === 'flex') {
-      closeModal();
-    } else if (focusModeEnabled) {
-      toggleFocus();
-    }
-  }
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-    e.preventDefault();
-    document.getElementById('searchInput').focus();
-  }
-  if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-    e.preventDefault();
-    openAddForm();
-  }
-  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'F') {
-    e.preventDefault();
-    toggleFocus();
-  }
-});
-
-// ── Init ───────────────────────────────────────────────────────────────────
-function init() {
-  // Set default date to today
-  document.getElementById('addDate').value = new Date().toISOString().split('T')[0];
-
-  // Open add form by default if no entries
-  load();
-
-  if (entries.length === 0) {
-    document.getElementById('formPanel').classList.add('open');
-  }
-
-  // Restore focus mode state
-  const savedFocus = localStorage.getItem(FOCUS_KEY);
-  if (savedFocus === '1') {
-    focusModeEnabled = true;
-    applyFocusState();
-  }
-
-  updateSortHeaders();
-  renderStats();
-  renderTable();
+// ══════════════════════════════════════════════════════════════════════════════
+// VIEW SWITCHING
+// ══════════════════════════════════════════════════════════════════════════════
+function switchView(view){
+  if(view===currentView)return;const old=currentView;currentView=view;
+  document.querySelectorAll('.view-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  const o=document.getElementById(`view${old.charAt(0).toUpperCase()+old.slice(1)}`);
+  const n=document.getElementById(`view${view.charAt(0).toUpperCase()+view.slice(1)}`);
+  if(o)gsap.to(o,{duration:0.12,opacity:0,display:'none',ease:'power2.in',onComplete:()=>{o.classList.remove('active','visible');if(n){n.style.display='block';n.classList.add('active');gsap.fromTo(n,{opacity:0,y:8},{opacity:1,y:0,duration:0.25,ease:'power2.out',onComplete:()=>n.classList.add('visible')})}}});
+  if(view==='kanban'&&!document.getElementById('kanbanBoard').children.length)renderKanban();
+  if(view==='analytics')setTimeout(renderAnalytics,120);
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// FORM
+// ══════════════════════════════════════════════════════════════════════════════
+function openAddForm(){
+  const p=document.getElementById('formPanel');if(!p.classList.contains('open')){p.classList.add('open')}
+  const h=p.querySelector('.chevron');if(h)h.style.transform='rotate(180deg)';
+  document.getElementById('addCompany').focus();p.scrollIntoView({behavior:'smooth',block:'nearest'})
+}
+function toggleForm(){const p=document.getElementById('formPanel');p.classList.toggle('open');const h=p.querySelector('.chevron');if(h)h.style.transform=p.classList.contains('open')?'rotate(180deg)':'rotate(0deg)'}
+function clearForm(){['addCompany','addPosition','addNotes','addWebsite'].forEach(id=>document.getElementById(id).value='');document.getElementById('addStatus').value='Applied';document.getElementById('addDate').value=new Date().toISOString().split('T')[0]}
+function addEntry(){
+  const c=document.getElementById('addCompany').value.trim(),p=document.getElementById('addPosition').value.trim(),d=document.getElementById('addDate').value,s=document.getElementById('addStatus').value,n=document.getElementById('addNotes').value.trim(),w=document.getElementById('addWebsite').value.trim();
+  if(!c)return shake('addCompany'),toast('Company is required','error');if(!p)return shake('addPosition'),toast('Position is required','error');if(!d)return shake('addDate'),toast('Date is required','error');
+  const entry={id:uid(),company:c,position:p,date:d,status:s,notes:n,website:w};
+  entries.unshift(entry);save();renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();clearForm();
+  toast(`Added ${c} — ${p}`,'success');
+  checkCelebration(entry,null);
+  const fr=document.querySelector('#tableBody tr');if(fr)gsap.fromTo(fr,{background:'rgba(0,102,204,0.06)'},{background:'transparent',duration:1.5,ease:'power2.out'})
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════════════════════════════════════════════
+function openEdit(id){
+  const e=entries.find(x=>x.id===id);if(!e)return;editingId=id;
+  document.getElementById('editCompany').value=e.company;document.getElementById('editPosition').value=e.position;
+  document.getElementById('editDate').value=e.date;document.getElementById('editStatus').value=e.status;
+  document.getElementById('editNotes').value=e.notes||'';document.getElementById('editWebsite').value=e.website||'';
+  document.getElementById('modalTitle').textContent=`${e.company} — ${e.position}`;
+  document.getElementById('modalLogo').innerHTML=logoHtml(e.company,e.website||'',36);
+  const m=document.getElementById('editModal');m.classList.add('show');document.body.style.overflow='hidden';
+  gsap.fromTo(m.querySelector('.modal'),{opacity:0,scale:0.95,y:8},{opacity:1,scale:1,y:0,duration:0.25,ease:'power3.out'});
+  setTimeout(()=>document.getElementById('editCompany').focus(),80)
+}
+function closeModal(){const m=document.getElementById('editModal');gsap.to(m.querySelector('.modal'),{opacity:0,scale:0.97,duration:0.1,ease:'power2.in',onComplete:()=>{m.classList.remove('show');document.body.style.overflow='';editingId=null}})}
+function saveEdit(){if(!editingId)return;const c=document.getElementById('editCompany').value.trim(),p=document.getElementById('editPosition').value.trim(),d=document.getElementById('editDate').value,s=document.getElementById('editStatus').value,n=document.getElementById('editNotes').value.trim(),w=document.getElementById('editWebsite').value.trim();if(!c)return shake('editCompany'),toast('Company required','error');if(!p)return shake('editPosition'),toast('Position required','error');if(!d)return shake('editDate'),toast('Date required','error');const i=entries.findIndex(x=>x.id===editingId);if(i===-1)return;const prev=entries[i].status;entries[i]={...entries[i],company:c,position:p,date:d,status:s,notes:n,website:w};save();renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();closeModal();toast(`Updated ${c}`,'success');checkCelebration(entries[i],prev)}
+function deleteEntry(){if(!editingId)return;const e=entries.find(x=>x.id===editingId);entries=entries.filter(x=>x.id!==editingId);save();renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();closeModal();toast(`Deleted ${e?e.company:'entry'}`,'info')}
+function quickDelete(id){const e=entries.find(x=>x.id===id);if(!e)return;entries=entries.filter(x=>x.id!==id);save();renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();toast(`Deleted ${e.company}`,'info')}
+function shake(id){const el=document.getElementById(id);if(!el)return;gsap.fromTo(el,{x:-3},{x:3,duration:0.04,repeat:5,yoyo:true,ease:'power1.inOut',onComplete:()=>{el.style.borderColor='';el.style.boxShadow=''}});el.style.borderColor='var(--red)';el.style.boxShadow='0 0 0 3px rgba(255,59,48,0.1)'}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COMMAND PALETTE
+// ══════════════════════════════════════════════════════════════════════════════
+const CMDK_ITEMS=[
+  {id:'add',icon:'➕',title:'Add Application',desc:'Create a new job application entry',kbd:'⌘N',action:()=>{toggleCmdk();openAddForm()}},
+  {id:'table',icon:'📋',title:'Table View',desc:'Switch to table view',kbd:'⌘1',action:()=>{toggleCmdk();switchView('table')}},
+  {id:'kanban',icon:'📌',title:'Kanban Board',desc:'Switch to kanban board',kbd:'⌘2',action:()=>{toggleCmdk();switchView('kanban')}},
+  {id:'analytics',icon:'📊',title:'Analytics',desc:'View pipeline analytics',kbd:'⌘3',action:()=>{toggleCmdk();switchView('analytics')}},
+  {id:'export',icon:'📥',title:'Export CSV',desc:'Download applications as CSV',kbd:'⌘E',action:()=>{toggleCmdk();exportCSV()}},
+  {id:'clear',icon:'🗑️',title:'Clear Filters',desc:'Reset all search and filters',kbd:'⌘⇧C',action:()=>{toggleCmdk();clearFilters()}},
+  {id:'theme',icon:'🎨',title:'Toggle Theme',desc:'Switch between light and dark mode',kbd:'⌘⇧T',action:()=>{toggleCmdk();toggleTheme()}},
+];
+function toggleCmdk(){const bd=document.getElementById('cmdkBackdrop');const isOpen=bd.classList.contains('show');if(isOpen){bd.classList.remove('show');document.body.style.overflow='';return}bd.classList.add('show');document.body.style.overflow='hidden';document.getElementById('cmdkInput').value='';cmdkIndex=0;renderCmdk('');setTimeout(()=>document.getElementById('cmdkInput').focus(),50)}
+function renderCmdk(q){const items=CMDK_ITEMS.filter(i=>!q||i.title.toLowerCase().includes(q)||i.desc.toLowerCase().includes(q));document.getElementById('cmdkResults').innerHTML=items.map((item,i)=>`<div class="cmdk-item ${i===cmdkIndex?'active':''}" data-cmdk-idx="${i}" onclick="execCmdk(${i})"><div class="cmdk-item-icon">${item.icon}</div><div class="cmdk-item-text"><div class="cmdk-item-title">${item.title}</div><div class="cmdk-item-desc">${item.desc}</div></div><span class="cmdk-kbd">${item.kbd||'↵'}</span></div>`).join('')||'<div style="padding:24px;text-align:center;color:var(--text-muted)">No commands found</div>'}
+let cmdkFil=CMDK_ITEMS;
+function execCmdk(idx){const q=document.getElementById('cmdkInput').value.toLowerCase();cmdkFil=CMDK_ITEMS.filter(i=>!q||i.title.toLowerCase().includes(q)||i.desc.toLowerCase().includes(q));const item=cmdkFil[idx];if(item)item.action()}
+document.getElementById('cmdkInput')?.addEventListener('input',function(){cmdkIndex=0;renderCmdk(this.value.toLowerCase())});
+document.getElementById('cmdkInput')?.addEventListener('keydown',function(e){if(e.key==='ArrowDown'){e.preventDefault();const items=document.querySelectorAll('.cmdk-item');cmdkIndex=Math.min(cmdkIndex+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('active',i===cmdkIndex))}if(e.key==='ArrowUp'){e.preventDefault();cmdkIndex=Math.max(0,cmdkIndex-1);document.querySelectorAll('.cmdk-item').forEach((el,i)=>el.classList.toggle('active',i===cmdkIndex))}if(e.key==='Enter'){e.preventDefault();execCmdk(cmdkIndex)}})
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EXPORT / FILTERS / TOAST / KEYBOARD
+// ══════════════════════════════════════════════════════════════════════════════
+function exportCSV(){const h=['Company','Position','Date Applied','Status','Days Since','Website','Notes'];const r=entries.map(e=>[e.company,e.position,e.date,e.status,daysBetween(e.date),e.website||'',e.notes||'']);const csv=[h,...r].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const b=new Blob([csv],{type:'text/csv;charset=utf-8;'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`pipeline-export-${new Date().toISOString().split('T')[0]}.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);toast('Exported to CSV','success')}
+function clearFilters(){document.getElementById('searchInput').value='';document.getElementById('filterStatus').value='';document.getElementById('filterFrom').value='';document.getElementById('filterTo').value='';renderTable()}
+function toast(msg,t='info'){const icons={success:'✓',error:'✕',info:'ℹ'};const el=document.createElement('div');el.className=`toast ${t}`;el.innerHTML=`<span style="opacity:0.5;font-weight:700;margin-right:2px">${icons[t]}</span>${esc(msg)}`;document.getElementById('toastContainer').appendChild(el);gsap.fromTo(el,{opacity:0,x:20},{opacity:1,x:0,duration:0.2,ease:'power2.out'});setTimeout(()=>{gsap.to(el,{opacity:0,x:20,duration:0.12,ease:'power2.in',onComplete:()=>el.remove()})},2400)}
+document.addEventListener('keydown',e=>{
+  const mod=e.metaKey||e.ctrlKey;
+  if(e.key==='Escape'){const m=document.getElementById('editModal');if(m.classList.contains('show'))closeModal();else if(document.getElementById('cmdkBackdrop').classList.contains('show'))toggleCmdk()}
+  if(mod&&e.key==='k'){e.preventDefault();toggleCmdk()}
+  if(mod&&e.key==='n'){e.preventDefault();openAddForm()}
+  if(mod&&e.key==='1'){e.preventDefault();switchView('table')}
+  if(mod&&e.key==='2'){e.preventDefault();switchView('kanban')}
+  if(mod&&e.key==='3'){e.preventDefault();switchView('analytics')}
+  if(mod&&e.key==='e'){e.preventDefault();exportCSV()}
+  if(mod&&e.shiftKey&&e.key==='C'){e.preventDefault();clearFilters()}
+  if(mod&&e.shiftKey&&e.key==='T'){e.preventDefault();toggleTheme()}
+})
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
+function init(){
+  // Restore theme
+  const savedTheme=localStorage.getItem(THEME_KEY)||'light';
+  applyTheme(savedTheme);
+
+  document.getElementById('addDate').value=new Date().toISOString().split('T')[0];
+  load();if(entries.length===0)document.getElementById('formPanel').classList.add('open');
+  updateSortHeaders();renderStats();renderTable();initParticles();
+  gsap.from('.stat-card',{opacity:0,y:10,duration:0.3,stagger:0.04,ease:'power2.out',delay:0.05});
+  gsap.from('.form-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.15});
+  gsap.from('.table-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.2});
+}
 init();
 </script>
 </body>
