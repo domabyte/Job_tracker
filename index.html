@@ -594,6 +594,40 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 <!-- ═══ MAIN ═══ -->
 <main class="main" id="appMain">
 
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>Total</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-sub" id="statTotalSub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>Pending</div>
+      <div class="stat-value" id="statPending">0</div>
+      <div class="stat-sub" id="statPendingSub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Interviews</div>
+      <div class="stat-value" id="statInterviews">0</div>
+      <div class="stat-sub" id="statInterviewsSub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Offers</div>
+      <div class="stat-value" id="statOffers">0</div>
+      <div class="stat-sub" id="statOffersSub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Rejected</div>
+      <div class="stat-value" id="statRejected">0</div>
+      <div class="stat-sub" id="statRejectedSub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>Accepted</div>
+      <div class="stat-value" id="statAccepted">0</div>
+      <div class="stat-sub" id="statAcceptedSub">—</div>
+    </div>
+  </div>
+
   <!-- Add Form -->
   <div class="form-panel" id="formPanel">
     <div class="form-panel-header" onclick="toggleForm()">
@@ -711,38 +745,6 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 
     <!-- ANALYTICS VIEW -->
     <div class="view-panel" id="viewAnalytics">
-      <div class="stats-grid" id="statsGrid">
-        <div class="stat-card">
-          <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>Total</div>
-          <div class="stat-value" id="statTotal">0</div>
-          <div class="stat-sub" id="statTotalSub">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>Pending</div>
-          <div class="stat-value" id="statPending">0</div>
-          <div class="stat-sub" id="statPendingSub">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Interviews</div>
-          <div class="stat-value" id="statInterviews">0</div>
-          <div class="stat-sub" id="statInterviewsSub">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Offers</div>
-          <div class="stat-value" id="statOffers">0</div>
-          <div class="stat-sub" id="statOffersSub">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Rejected</div>
-          <div class="stat-value" id="statRejected">0</div>
-          <div class="stat-sub" id="statRejectedSub">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>Accepted</div>
-          <div class="stat-value" id="statAccepted">0</div>
-          <div class="stat-sub" id="statAcceptedSub">—</div>
-        </div>
-      </div>
       <div class="analytics-grid">
         <div class="analytics-card full">
           <h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Pipeline Funnel</h3>
@@ -1133,8 +1135,7 @@ function renderAnalytics(){
   gsap.to('#asConversion',{duration:0.7,ease:'power2.out',textContent:`${conv}%`,roundProps:'textContent'});
   gsap.to('#asSuccess',{duration:0.7,ease:'power2.out',textContent:`${succ}%`,roundProps:'textContent'});
   // Re-animate top stat cards too
-  renderStats();
-  gsap.fromTo('.stat-card',{opacity:0.3,y:8},{opacity:1,y:0,duration:0.25,stagger:0.03,ease:'power2.out'})
+  renderStats()
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1146,8 +1147,8 @@ function switchView(view){
   const o=document.getElementById(`view${old.charAt(0).toUpperCase()+old.slice(1)}`);
   const n=document.getElementById(`view${view.charAt(0).toUpperCase()+view.slice(1)}`);
   if(o)gsap.to(o,{duration:0.12,opacity:0,display:'none',ease:'power2.in',onComplete:()=>{o.classList.remove('active','visible');if(n){n.style.display='block';n.classList.add('active');gsap.fromTo(n,{opacity:0,y:8},{opacity:1,y:0,duration:0.25,ease:'power2.out',onComplete:()=>n.classList.add('visible')})}}});
-  if(view==='kanban'){if(!document.getElementById('kanbanBoard').children.length)renderKanban()}
-  if(view==='analytics'){setTimeout(renderAnalytics,200)}
+  if(view==='kanban'){if(!document.getElementById('kanbanBoard').children.length)renderKanban();renderStats()}
+  if(view==='analytics'){setTimeout(renderAnalytics,200);renderStats()}
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1274,6 +1275,7 @@ function init(){
   document.getElementById('addDate').value=new Date().toISOString().split('T')[0];
   load();if(entries.length===0)document.getElementById('formPanel').classList.add('open');
   updateSortHeaders();renderStats();renderTable();initParticles();
+  gsap.from('.stat-card',{opacity:0.3,y:8,duration:0.2,stagger:0.02,ease:'power2.out',delay:0.02});
   gsap.from('.form-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.15});
   gsap.from('.table-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.2});
 }
