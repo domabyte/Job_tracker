@@ -9,6 +9,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+<!-- Supabase: config + client. Edit supabase-config.js for local dev (not committed). -->
+<script src="supabase-config.js"></script>
+<script>
+  // Inline fallback for deployed build — keys are safe (RLS protects data)
+  if(!window.SUPABASE_CONFIG){
+    window.SUPABASE_CONFIG={
+      url:'https://rctscnzzcyxrsgwhqsjk.supabase.co',
+      anonKey:'sb_publishable_r2Q9iD-xojFB2aMOVDs29g_9NTHyPBz'
+    };
+  }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ══════════════════════════════════════════════
    DESIGN SYSTEM — Light & Dark
@@ -548,6 +560,28 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
   th{padding:8px;font-size:9px}
   .td-company{font-size:11px}
 }
+
+/* ═══════════════════════════════════════════════════
+   AUTH
+   ═══════════════════════════════════════════════════ */
+.auth-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:var(--bg-base);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.auth-card{width:380px;max-width:92vw;padding:36px 32px 28px;text-align:center;border-radius:var(--radius-xl);border:1px solid var(--border-glass);box-shadow:var(--shadow-lg)}
+.auth-logo{margin-bottom:24px}
+.auth-logo h1{font-size:22px;font-weight:700;color:var(--text-primary);margin:8px 0 2px}
+.auth-tabs{display:flex;background:var(--bg-elevated);border-radius:var(--radius);padding:3px;margin-bottom:20px}
+.auth-tab{flex:1;padding:8px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:var(--transition)}
+.auth-tab.active{background:var(--bg-surface);color:var(--text-primary);box-shadow:var(--shadow-sm)}
+.auth-form{display:flex;flex-direction:column;gap:10px}
+.auth-input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-elevated);color:var(--text-primary);font-size:14px;font-family:inherit;outline:none;transition:var(--transition-smooth)}
+.auth-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.auth-btn{width:100%;margin-top:4px;justify-content:center}
+.auth-error{font-size:12px;color:var(--red);margin-top:10px;min-height:18px}
+.auth-loading{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;color:var(--text-muted);font-size:13px}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.auth-bar{position:fixed;top:0;right:0;z-index:9999;display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg-glass-strong);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom-left-radius:var(--radius);border-left:1px solid var(--border-glass);border-bottom:1px solid var(--border-glass)}
+
+
 </style>
 </head>
 <body>
@@ -867,11 +901,46 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 <!-- ═══ TOASTS ═══ -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- ═══ AUTH OVERLAY ═══ -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card glass">
+    <div class="auth-logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 12l2 2 4-4"/></svg>
+      <h1>Pipeline</h1>
+      <p style="color:var(--text-muted);font-size:13px">Job Application Tracker</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="authTabSignIn" onclick="showAuthForm('signin')">Sign In</button>
+      <button class="auth-tab" id="authTabSignUp" onclick="showAuthForm('signup')">Sign Up</button>
+    </div>
+    <div id="authFormSignIn" class="auth-form">
+      <input type="email" class="auth-input" id="authEmail" placeholder="Email" autocomplete="email" onkeydown="if(event.key==='Enter')signIn()">
+      <input type="password" class="auth-input" id="authPassword" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+      <button class="btn btn-primary auth-btn" onclick="signIn()">Sign In</button>
+    </div>
+    <div id="authFormSignUp" class="auth-form" style="display:none">
+      <input type="email" class="auth-input" id="authEmailUp" placeholder="Email" autocomplete="email" onkeydown="if(event.key==='Enter')signUp()">
+      <input type="password" class="auth-input" id="authPasswordUp" placeholder="Password (min 6 chars)" autocomplete="new-password" onkeydown="if(event.key==='Enter')signUp()">
+      <button class="btn btn-primary auth-btn" onclick="signUp()">Sign Up</button>
+    </div>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-loading" id="authLoading" style="display:none">
+      <div class="spinner"></div>
+      <span>Loading your data…</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AUTH BAR (shown when logged in) ═══ -->
+<div class="auth-bar" id="authBar" style="display:none">
+  <span id="authUserEmail" style="font-size:12px;color:var(--text-muted)"></span>
+  <button class="btn btn-secondary btn-sm" onclick="signOut()" style="font-size:11px;padding:4px 10px">Sign Out</button>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════════════════════
-const STORAGE_KEY='pipeline_entries';
 const THEME_KEY='pipeline_theme';
 let entries=[];
 let editingId=null;
@@ -880,20 +949,103 @@ let currentView='table';
 let funnelChart=null,donutChart=null,weeklyChart=null;
 let cmdkIndex=0;
 
-const SAMPLE_DATA=[
-  {id:uid(),company:'Stripe',position:'Senior Software Engineer',date:daysAgo(2),status:'Interview',website:'stripe.com',notes:'Technical round next week with payments team.'},
-  {id:uid(),company:'Linear',position:'Product Engineer',date:daysAgo(5),status:'Phone Screen',website:'linear.app',notes:'Great call with Karri. Waiting on next steps.'},
-  {id:uid(),company:'Vercel',position:'Staff Engineer',date:daysAgo(8),status:'Applied',website:'vercel.com',notes:'Role closes end of month.'},
-  {id:uid(),company:'Figma',position:'Engineering Manager',date:daysAgo(14),status:'Rejected',website:'figma.com',notes:'Final round. Went with internal candidate.'},
-  {id:uid(),company:'Notion',position:'Frontend Engineer',date:daysAgo(21),status:'Offer',website:'notion.so',notes:'$190k base + equity. Deadline June 10.'},
-  {id:uid(),company:'Supabase',position:'Developer Advocate',date:daysAgo(3),status:'Applied',website:'supabase.com',notes:'Excited about this role.'},
-  {id:uid(),company:'PlanetScale',position:'Platform Engineer',date:daysAgo(45),status:'Accepted',website:'planetscale.com',notes:'Accepted! Starting July 7. $210k.'},
-  {id:uid(),company:'Clerk',position:'Senior Frontend Engineer',date:daysAgo(7),status:'Phone Screen',website:'clerk.com',notes:'CTO reached out on LinkedIn.'},
-  {id:uid(),company:'Retool',position:'React Engineer',date:daysAgo(11),status:'Interview',website:'retool.com',notes:'Take-home due Friday.'},
-  {id:uid(),company:'Railway',position:'Infrastructure Engineer',date:daysAgo(18),status:'Rejected',website:'railway.app',notes:'Didn\'t pass system design.'},
-  {id:uid(),company:'Loom',position:'Full-Stack Engineer',date:daysAgo(30),status:'Rejected',website:'loom.com',notes:'Form rejection.'},
-  {id:uid(),company:'Resend',position:'Engineer',date:daysAgo(1),status:'Applied',website:'resend.dev',notes:'Small team, huge upside.'},
-];
+// ══════════════════════════════════════════════════════════════════════════════
+// SUPABASE — client + auth
+// ══════════════════════════════════════════════════════════════════════════════
+let supabase=null;
+function initSupabase(){
+  if(!window.SUPABASE_CONFIG||!window.SUPABASE_CONFIG.url||!window.SUPABASE_CONFIG.anonKey){
+    document.getElementById('authError').textContent='Missing supabase-config.js — copy supabase-config.example.js and add your keys.';
+    return null;
+  }
+  supabase=window.supabase.createClient(window.SUPABASE_CONFIG.url,window.SUPABASE_CONFIG.anonKey);
+  return supabase;
+}
+
+let currentUser=null;
+
+// ── Auth UI ──
+function showAuthForm(mode){
+  document.getElementById('authTabSignIn').classList.toggle('active',mode==='signin');
+  document.getElementById('authTabSignUp').classList.toggle('active',mode==='signup');
+  document.getElementById('authFormSignIn').style.display=mode==='signin'?'flex':'none';
+  document.getElementById('authFormSignUp').style.display=mode==='signup'?'flex':'none';
+  document.getElementById('authError').textContent='';
+}
+
+function showAuthLoading(v){
+  document.getElementById('authLoading').style.display=v?'flex':'none';
+  document.querySelectorAll('.auth-form, .auth-btn, .auth-tabs, .auth-logo').forEach(e=>{
+    if(e.closest)return;
+    e.style.opacity=v?'0.4':'1';
+  });
+}
+
+async function signUp(){
+  const email=document.getElementById('authEmailUp').value.trim();
+  const pass=document.getElementById('authPasswordUp').value;
+  if(!email||!pass)return setAuthError('Email and password required');
+  if(pass.length<6)return setAuthError('Password must be at least 6 characters');
+  showAuthLoading(true);setAuthError('');
+  try{
+    const {data,error}=await supabase.auth.signUp({email,password:pass});
+    if(error){showAuthLoading(false);return setAuthError(error.message)}
+    setAuthError('Check your email for the confirmation link. Already confirmed? Sign in.');
+    showAuthLoading(false);
+  }catch(e){showAuthLoading(false);setAuthError(e.message)}
+}
+
+async function signIn(){
+  const email=document.getElementById('authEmail').value.trim();
+  const pass=document.getElementById('authPassword').value;
+  if(!email||!pass)return setAuthError('Email and password required');
+  showAuthLoading(true);setAuthError('');
+  try{
+    const {data,error}=await supabase.auth.signInWithPassword({email,password:pass});
+    if(error){showAuthLoading(false);return setAuthError(error.message)}
+    currentUser=data.user;
+    showAuthLoading(false);
+    onAuthSuccess();
+  }catch(e){showAuthLoading(false);setAuthError(e.message)}
+}
+
+async function signOut(){
+  await supabase.auth.signOut();
+  currentUser=null;entries=[];
+  document.getElementById('authOverlay').style.display='flex';
+  document.getElementById('authBar').style.display='none';
+  document.querySelectorAll('.auth-form input').forEach(i=>i.value='');
+  document.getElementById('authError').textContent='';
+}
+
+function setAuthError(msg){
+  document.getElementById('authError').textContent=msg;
+}
+
+function onAuthSuccess(){
+  document.getElementById('authOverlay').style.display='none';
+  document.getElementById('authBar').style.display='flex';
+  document.getElementById('authUserEmail').textContent=currentUser.email;
+  loadEntries();
+  // Realtime sync
+  supabase.channel('jobs-sync')
+    .on('postgres_changes',{event:'*',schema:'public',table:'jobs',filter:`user_id=eq.${currentUser.id}`},()=>{loadEntries()})
+    .subscribe();
+}
+
+// ── Check session on page load ──
+async function checkAuth(){
+  initSupabase();
+  if(!supabase)return;
+  const {data:{session},error}=await supabase.auth.getSession();
+  if(session&&session.user){
+    currentUser=session.user;
+    onAuthSuccess();
+  }else{
+    document.getElementById('authOverlay').style.display='flex';
+    document.getElementById('authBar').style.display='none';
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -991,11 +1143,44 @@ function initParticles(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// PERSISTENCE
+// SUPABASE — CRUD
 // ══════════════════════════════════════════════════════════════════════════════
-function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(entries))}
-function load(){
-  try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){entries=JSON.parse(raw).map(e=>({website:'',...e}))}else{entries=SAMPLE_DATA;save()}}catch(e){entries=SAMPLE_DATA;save()}
+async function loadEntries(){
+  try{
+    const {data,error}=await supabase.from('jobs').select('*').order('date',{ascending:false}).order('created_at',{ascending:false});
+    if(error)throw error;
+    entries=data||[];
+    // Start UI
+    document.getElementById('addDate').value=new Date().toISOString().split('T')[0];
+    if(entries.length===0)document.getElementById('formPanel').classList.add('open');
+    updateSortHeaders();renderStats();renderTable();initParticles();
+    gsap.from('.stat-card',{opacity:0.3,y:8,duration:0.2,stagger:0.02,ease:'power2.out',delay:0.02});
+    gsap.from('.form-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.15});
+    gsap.from('.table-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.2});
+  }catch(e){
+    console.error('Failed to load entries:',e);
+    toast('Failed to load data','error');
+  }
+}
+
+async function saveEntry(entry){
+  const {data,error}=await supabase.from('jobs').insert({
+    company:entry.company,position:entry.position,date:entry.date,
+    status:entry.status,website:entry.website||'',notes:entry.notes||''
+  }).select().single();
+  if(error)throw error;
+  return data;
+}
+
+async function updateEntry(id,changes){
+  const {data,error}=await supabase.from('jobs').update(changes).eq('id',id).select().single();
+  if(error)throw error;
+  return data;
+}
+
+async function deleteEntry(id){
+  const {error}=await supabase.from('jobs').delete().eq('id',id);
+  if(error)throw error;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1091,9 +1276,10 @@ function onDrop(e){
   const entry=entries.find(x=>x.id===dragId);
   if(entry&&entry.status!==ns){
     const prevStatus=entry.status;
-    entry.status=ns;save();renderStats();renderTable();renderKanban();
+    entry.status=ns;renderStats();renderTable();renderKanban();
     toast(`Moved ${entry.company} → ${ns}`,'success');
     checkCelebration(entry,prevStatus);
+    updateEntry(dragId,{status:ns}).catch(err=>{toast('Status update failed: '+err.message,'error')});
   }
   dragId=null;
 }
@@ -1164,11 +1350,14 @@ function clearForm(){['addCompany','addPosition','addNotes','addWebsite'].forEac
 function addEntry(){
   const c=document.getElementById('addCompany').value.trim(),p=document.getElementById('addPosition').value.trim(),d=document.getElementById('addDate').value,s=document.getElementById('addStatus').value,n=document.getElementById('addNotes').value.trim(),w=document.getElementById('addWebsite').value.trim();
   if(!c)return shake('addCompany'),toast('Company is required','error');if(!p)return shake('addPosition'),toast('Position is required','error');if(!d)return shake('addDate'),toast('Date is required','error');
-  const entry={id:uid(),company:c,position:p,date:d,status:s,notes:n,website:w};
-  entries.unshift(entry);save();renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();clearForm();
-  toast(`Added ${c} — ${p}`,'success');
-  checkCelebration(entry,null);
-  const fr=document.querySelector('#tableBody tr');if(fr)gsap.fromTo(fr,{background:'rgba(0,102,204,0.06)'},{background:'transparent',duration:1.5,ease:'power2.out'})
+  const entry={company:c,position:p,date:d,status:s,notes:n,website:w};
+  const btn=document.querySelector('.form-panel .btn-primary');
+  btn.disabled=true;btn.textContent='Saving…';
+  saveEntry(entry).then(saved=>{
+    entries.unshift(saved);renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();clearForm();btn.disabled=false;btn.textContent='Add Entry';
+    toast(`Added ${c} — ${p}`,'success');checkCelebration(saved,null);
+    const fr=document.querySelector('#tableBody tr');if(fr)gsap.fromTo(fr,{background:'rgba(0,102,204,0.06)'},{background:'transparent',duration:1.5,ease:'power2.out'})
+  }).catch(e=>{btn.disabled=false;btn.textContent='Add Entry';toast('Failed to save: '+e.message,'error')});
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1213,9 +1402,9 @@ function showConfirmSave(){
   document.getElementById('modalFooter').style.display='none';
   document.getElementById('modalConfirm').style.display='flex'
 }
-function executeDelete(){if(!editingId)return;const e=entries.find(x=>x.id===editingId);entries=entries.filter(x=>x.id!==editingId);save();renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();closeModal();toast(`Deleted ${e?e.company:'entry'}`,'info')}
-function executeSave(){if(!editingId)return;const c=document.getElementById('editCompany').value.trim(),p=document.getElementById('editPosition').value.trim(),d=document.getElementById('editDate').value,s=document.getElementById('editStatus').value,n=document.getElementById('editNotes').value.trim(),w=document.getElementById('editWebsite').value.trim();if(!c)return shake('editCompany'),toast('Company required','error');if(!p)return shake('editPosition'),toast('Position required','error');if(!d)return shake('editDate'),toast('Date required','error');const i=entries.findIndex(x=>x.id===editingId);if(i===-1)return;const prev=entries[i].status;entries[i]={...entries[i],company:c,position:p,date:d,status:s,notes:n,website:w};save();renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();closeModal();toast(`Updated ${c}`,'success');checkCelebration(entries[i],prev)}
-function quickDelete(id){const e=entries.find(x=>x.id===id);if(!e)return;showConfirmDialog(`Delete ${e.company}?`,()=>{entries=entries.filter(x=>x.id!==id);save();renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();toast(`Deleted ${e.company}`,'info')})}
+function executeDelete(){if(!editingId)return;const e=entries.find(x=>x.id===editingId);const lid=editingId;entries=entries.filter(x=>x.id!==lid);renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();closeModal();toast(`Deleted ${e?e.company:'entry'}`,'info');deleteEntry(lid).catch(err=>{toast('Delete failed: '+err.message,'error')})}
+function executeSave(){if(!editingId)return;const c=document.getElementById('editCompany').value.trim(),p=document.getElementById('editPosition').value.trim(),d=document.getElementById('editDate').value,s=document.getElementById('editStatus').value,n=document.getElementById('editNotes').value.trim(),w=document.getElementById('editWebsite').value.trim();if(!c)return shake('editCompany'),toast('Company required','error');if(!p)return shake('editPosition'),toast('Position required','error');if(!d)return shake('editDate'),toast('Date required','error');const i=entries.findIndex(x=>x.id===editingId);if(i===-1)return;const prev=entries[i].status;const changes={company:c,position:p,date:d,status:s,notes:n,website:w};entries[i]={...entries[i],...changes};renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();closeModal();toast(`Updated ${c}`,'success');checkCelebration(entries[i],prev);updateEntry(editingId,changes).catch(err=>{toast('Update failed: '+err.message,'error')})}
+function quickDelete(id){const e=entries.find(x=>x.id===id);if(!e)return;showConfirmDialog(`Delete ${e.company}?`,()=>{entries=entries.filter(x=>x.id!==id);renderStats();renderTable();if(currentView==='kanban')renderKanban();if(currentView==='analytics')renderAnalytics();toast(`Deleted ${e.company}`,'info');deleteEntry(id).catch(err=>{toast('Delete failed: '+err.message,'error')})})}
 function showConfirmDialog(msg,onConfirm){
   document.getElementById('confirmDialogMsg').textContent=msg;
   const btn=document.getElementById('confirmDialogYesBtn');
@@ -1271,13 +1460,8 @@ function init(){
   // Restore theme
   const savedTheme=localStorage.getItem(THEME_KEY)||'light';
   applyTheme(savedTheme);
-
-  document.getElementById('addDate').value=new Date().toISOString().split('T')[0];
-  load();if(entries.length===0)document.getElementById('formPanel').classList.add('open');
-  updateSortHeaders();renderStats();renderTable();initParticles();
-  gsap.from('.stat-card',{opacity:0.3,y:8,duration:0.2,stagger:0.02,ease:'power2.out',delay:0.02});
-  gsap.from('.form-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.15});
-  gsap.from('.table-panel',{opacity:0,y:8,duration:0.3,ease:'power2.out',delay:0.2});
+  // Start auth flow
+  checkAuth();
 }
 init();
 </script>

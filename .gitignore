@@ -1,0 +1,12 @@
+# Supabase config — users create their own for local dev (deployed build has inline fallback)
+supabase-config.js
+
+# Local env / temp files
+.env
+.env.local
+node_modules/
+.DS_Store
+*.log
+
+# Supabase temp (auto-generated on link)
+supabase/.temp/
