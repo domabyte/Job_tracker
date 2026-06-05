@@ -388,9 +388,17 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 .kanban-count{font-size:10px;font-weight:500;color:var(--text-muted);background:var(--bg-surface);padding:1px 8px;border-radius:10px;border:1px solid var(--border)}
 .kanban-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;min-height:60px}
 .kanban-body.drag-over{background:var(--accent-dim);border-radius:var(--radius)}
-.kanban-card{background:var(--bg-surface);padding:12px;border-radius:var(--radius);cursor:grab;transition:all var(--transition-smooth);user-select:none;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.kanban-card{position:relative;background:var(--bg-surface);padding:12px 36px 12px 12px;border-radius:var(--radius);cursor:grab;transition:all var(--transition-smooth);user-select:none;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
 .kanban-card:hover{box-shadow:var(--shadow);border-color:var(--border-medium)}
-.kanban-card.dragging{opacity:0.5;box-shadow:0 8px 30px rgba(0,0,0,0.15);transform:rotate(2deg)}
+.kanban-card.dragging{opacity:0.5;transform:rotate(1deg)}
+.kanban-card.drop-target-above::before,.kanban-card.drop-target-below::after{content:'';position:absolute;left:0;right:0;height:2px;background:var(--accent);border-radius:2px;z-index:10}
+.kanban-card.drop-target-above::before{top:-4px}
+.kanban-card.drop-target-below::after{bottom:-4px}
+.kanban-reorder{position:absolute;top:8px;right:6px;display:flex;flex-direction:column;gap:2px;opacity:0;transition:opacity var(--transition)}
+.kanban-card:hover .kanban-reorder{opacity:1}
+.kanban-move{width:22px;height:17px;padding:0;border:1px solid var(--border);border-radius:4px;background:var(--bg-elevated);color:var(--text-muted);cursor:pointer;font-size:9px;line-height:1;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.kanban-move:hover:not(:disabled){background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-medium)}
+.kanban-move:disabled{opacity:0.25;cursor:default}
 .kanban-card-company{font-size:12px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .kanban-card-position{font-size:11px;color:var(--text-secondary);margin-bottom:8px}
 .kanban-card-meta{display:flex;justify-content:space-between;align-items:center}
@@ -1124,8 +1132,11 @@ function onAuthSuccess(email){document.getElementById('authOverlay').style.displ
 // ── CRUD ──
 async function loadEntries(){
   try{
-    const data=await sbFetch('/rest/v1/jobs?select=*&order=date.desc,created_at.desc');
+    let data;
+    try{data=await sbFetch('/rest/v1/jobs?select=*&order=sort_order.asc,created_at.desc')}
+    catch{data=await sbFetch('/rest/v1/jobs?select=*&order=date.desc,created_at.desc')}
     entries=data||[];
+    ensureSortOrders();
     document.getElementById('addDate').value=new Date().toISOString().split('T')[0];
     if(entries.length===0)document.getElementById('formPanel').classList.add('open');
     updateSortHeaders();renderStats();renderTable();initParticles();
@@ -1427,33 +1438,134 @@ function renderTable(){
 // ══════════════════════════════════════════════════════════════════════════════
 const STATUS_COLS=['Applied','Phone Screen','Interview','Offer','Rejected','Accepted'];
 const STATUS_COLORS={Applied:['#0071e3','rgba(0,113,227,0.06)'],'Phone Screen':['#8b5cf6','rgba(139,92,246,0.06)'],Interview:['#e8a838','rgba(232,168,56,0.08)'],Offer:['#34c759','rgba(52,199,89,0.08)'],Rejected:['#ff3b30','rgba(255,59,48,0.06)'],Accepted:['#34c759','rgba(52,199,89,0.08)']};
+function getStatusItems(status){
+  return entries.filter(e=>e.status===status).sort((a,b)=>(a.sort_order??0)-(b.sort_order??0)||new Date(a.created_at)-new Date(b.created_at));
+}
+function ensureSortOrders(){
+  STATUS_COLS.forEach(s=>{
+    const items=getStatusItems(s);
+    const needsFix=items.some(e=>e.sort_order==null)||new Set(items.map(e=>e.sort_order)).size!==items.length;
+    if(needsFix)items.forEach((e,i)=>e.sort_order=i);
+  });
+}
+function nextSortOrder(status){
+  const items=getStatusItems(status);
+  return items.length?Math.max(...items.map(e=>e.sort_order??0))+1:0;
+}
 function renderKanban(){
   document.getElementById('kanbanBoard').innerHTML=STATUS_COLS.map(s=>{
-    const items=entries.filter(e=>e.status===s);const [c,]=STATUS_COLORS[s];
+    const items=getStatusItems(s);const [c,]=STATUS_COLORS[s];
     return`<div class="kanban-col" data-status="${s}">
       <div class="kanban-header"><div class="kanban-title"><span class="kanban-dot" style="background:${c}"></span>${s}</div><span class="kanban-count">${items.length}</span></div>
       <div class="kanban-body" data-status="${s}" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-        ${items.length===0?`<div class="kanban-empty">Drop here</div>`:items.map(e=>`<div class="kanban-card" draggable="true" data-id="${e.id}" ondragstart="onDragStart(event)" onclick="openEdit('${e.id}')"><div class="kanban-card-company">${logoHtml(e.company,e.website||'',18)}${esc(e.company)}</div><div class="kanban-card-position">${esc(e.position)}</div><div class="kanban-card-meta"><span class="badge ${badgeClass(e.status)}" style="font-size:9px;padding:1px 7px">${esc(e.status)}</span><span class="kanban-card-days">${daysBetween(e.date)}d</span></div></div>`).join('')}
+        ${items.length===0?`<div class="kanban-empty">Drop here</div>`:items.map((e,i)=>`<div class="kanban-card" draggable="true" data-id="${e.id}" ondragstart="onDragStart(event)" ondragend="onDragEnd(event)" ondragover="onCardDragOver(event)" onclick="openEdit('${e.id}')">
+          <div class="kanban-reorder">
+            <button class="kanban-move" draggable="false" onclick="moveKanbanItem('${e.id}',-1,event)" title="Move up" ${i===0?'disabled':''}>▲</button>
+            <button class="kanban-move" draggable="false" onclick="moveKanbanItem('${e.id}',1,event)" title="Move down" ${i===items.length-1?'disabled':''}>▼</button>
+          </div>
+          <div class="kanban-card-company">${logoHtml(e.company,e.website||'',18)}${esc(e.company)}</div>
+          <div class="kanban-card-position">${esc(e.position)}</div>
+          <div class="kanban-card-meta"><span class="badge ${badgeClass(e.status)}" style="font-size:9px;padding:1px 7px">${esc(e.status)}</span><span class="kanban-card-days">${daysBetween(e.date)}d</span></div>
+        </div>`).join('')}
       </div></div>`
   }).join('')
 }
-let dragId=null;
-function onDragStart(e){dragId=e.target.closest('.kanban-card')?.dataset.id;e.target.closest('.kanban-card')?.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
-function onDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';e.currentTarget.classList.add('drag-over')}
-function onDragLeave(e){e.currentTarget.classList.remove('drag-over')}
+async function moveKanbanItem(id,dir,ev){
+  if(ev){ev.stopPropagation();ev.preventDefault()}
+  const entry=entries.find(e=>e.id===id);if(!entry)return;
+  const items=getStatusItems(entry.status),idx=items.findIndex(e=>e.id===id),swapIdx=idx+dir;
+  if(swapIdx<0||swapIdx>=items.length)return;
+  [items[idx],items[swapIdx]]=[items[swapIdx],items[idx]];
+  const patches=[];
+  items.forEach((e,i)=>{if(e.sort_order!==i){e.sort_order=i;patches.push(updateEntry(e.id,{sort_order:i}))}});
+  renderKanban();
+  try{await Promise.all(patches)}catch(err){toast('Reorder failed: '+err.message,'error');loadEntries()}
+}
+let dragId=null,dragOverCard=null,dragOverPos='after';
+function onDragStart(e){
+  if(e.target.closest('.kanban-move')){e.preventDefault();return}
+  const card=e.target.closest('.kanban-card');if(!card)return;
+  dragId=card.dataset.id;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';
+}
+function onDragEnd(){
+  document.querySelectorAll('.kanban-card.dragging').forEach(el=>el.classList.remove('dragging'));
+  document.querySelectorAll('.kanban-body.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  document.querySelectorAll('.kanban-card.drop-target-above,.kanban-card.drop-target-below').forEach(el=>el.classList.remove('drop-target-above','drop-target-below'));
+  dragId=null;dragOverCard=null;dragOverPos='after';
+}
+function onCardDragOver(e){
+  e.preventDefault();e.stopPropagation();
+  const card=e.currentTarget;
+  if(card.dataset.id===dragId)return;
+  const rect=card.getBoundingClientRect();
+  const isTop=e.clientY<rect.top+rect.height/2;
+  document.querySelectorAll('.kanban-card.drop-target-above,.kanban-card.drop-target-below').forEach(el=>el.classList.remove('drop-target-above','drop-target-below'));
+  card.classList.add(isTop?'drop-target-above':'drop-target-below');
+  dragOverCard=card.dataset.id;dragOverPos=isTop?'before':'after';
+  card.closest('.kanban-body').classList.add('drag-over');
+}
+function onDragOver(e){
+  e.preventDefault();e.dataTransfer.dropEffect='move';
+  if(!e.target.closest('.kanban-card'))e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e){
+  if(!e.currentTarget.contains(e.relatedTarget)){
+    e.currentTarget.classList.remove('drag-over');
+    document.querySelectorAll('.kanban-card.drop-target-above,.kanban-card.drop-target-below').forEach(el=>el.classList.remove('drop-target-above','drop-target-below'));
+    if(!e.currentTarget.contains(document.querySelector('.kanban-card[data-id="'+dragOverCard+'"]')))dragOverCard=null;
+  }
+}
 function onDrop(e){
   e.preventDefault();e.currentTarget.classList.remove('drag-over');
   document.querySelectorAll('.kanban-card.dragging').forEach(el=>el.classList.remove('dragging'));
-  if(!dragId)return;const ns=e.currentTarget.dataset.status;
+  document.querySelectorAll('.kanban-card.drop-target-above,.kanban-card.drop-target-below').forEach(el=>el.classList.remove('drop-target-above','drop-target-below'));
+  if(!dragId)return;
+  const ns=e.currentTarget.dataset.status;
   const entry=entries.find(x=>x.id===dragId);
-  if(entry&&entry.status!==ns){
+  if(!entry){dragId=null;dragOverCard=null;return;}
+  if(entry.status===ns){
+    if(dragOverCard&&dragOverCard!==dragId){
+      const items=getStatusItems(ns);
+      const fromIdx=items.findIndex(x=>x.id===dragId);
+      const toIdx=items.findIndex(x=>x.id===dragOverCard);
+      if(fromIdx!==-1&&toIdx!==-1&&fromIdx!==toIdx){
+        items.splice(fromIdx,1);
+        const newToIdx=fromIdx<toIdx?toIdx-1:toIdx;
+        const insertAt=dragOverPos==='before'?newToIdx:newToIdx+1;
+        items.splice(insertAt,0,entry);
+        const patches=[];
+        items.forEach((x,i)=>{x.sort_order=i;patches.push(updateEntry(x.id,{sort_order:i}))});
+        renderKanban();
+        Promise.all(patches).catch(err=>{toast('Reorder failed','error');loadEntries()});
+      }
+    }
+  } else {
     const prevStatus=entry.status;
-    entry.status=ns;renderStats();renderTable();renderKanban();
+    entry.status=ns;entry.sort_order=nextSortOrder(ns);
+    if(dragOverCard){
+      const items=getStatusItems(ns);
+      const myIdx=items.findIndex(x=>x.id===dragId);
+      const targetIdx=items.findIndex(x=>x.id===dragOverCard);
+      if(myIdx!==-1&&targetIdx!==-1&&myIdx!==targetIdx){
+        items.splice(myIdx,1);
+        const newTargetIdx=items.findIndex(x=>x.id===dragOverCard);
+        const insertAt=dragOverPos==='before'?newTargetIdx:newTargetIdx+1;
+        items.splice(insertAt,0,entry);
+        items.forEach((x,i)=>x.sort_order=i);
+        renderStats();renderTable();renderKanban();
+        toast(`Moved ${entry.company} → ${ns}`,'success');
+        checkCelebration(entry,prevStatus);
+        Promise.all(items.map(x=>updateEntry(x.id,x.id===dragId?{status:ns,sort_order:x.sort_order}:{sort_order:x.sort_order}))).catch(err=>{toast('Status update failed','error');loadEntries()});
+        dragId=null;dragOverCard=null;dragOverPos='after';
+        return;
+      }
+    }
+    renderStats();renderTable();renderKanban();
     toast(`Moved ${entry.company} → ${ns}`,'success');
     checkCelebration(entry,prevStatus);
-    updateEntry(dragId,{status:ns}).catch(err=>{toast('Status update failed: '+err.message,'error')});
+    updateEntry(dragId,{status:ns,sort_order:entry.sort_order}).catch(err=>{toast('Status update failed: '+err.message,'error')});
   }
-  dragId=null;
+  dragId=null;dragOverCard=null;dragOverPos='after';
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1530,7 +1642,7 @@ function addEntry(){
   const c=document.getElementById('addCompany').value.trim(),p=document.getElementById('addPosition').value.trim(),d=document.getElementById('addDate').value,s=document.getElementById('addStatus').value,n=document.getElementById('addNotes').value.trim(),w=document.getElementById('addWebsite').value.trim();
   if(!c)return shake('addCompany'),toast('Company is required','error');if(!p)return shake('addPosition'),toast('Position is required','error');if(!d)return shake('addDate'),toast('Date is required','error');
   const userId=getCurrentUserId();if(!userId)return toast('Not signed in — please sign in again','error');
-  const entry={user_id:userId,company:c,position:p,date:d,status:s,notes:n,website:w};
+  const entry={user_id:userId,company:c,position:p,date:d,status:s,notes:n,website:w,sort_order:nextSortOrder(s)};
   const btn=document.querySelector('.form-panel .btn-primary');
   btn.disabled=true;btn.textContent='Saving…';
   saveEntry(entry).then(saved=>{
