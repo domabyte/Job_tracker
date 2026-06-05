@@ -963,14 +963,59 @@ let cmdkIndex=0;
 // ══════════════════════════════════════════════════════════════════════════════
 const SB=window.SUPABASE_CONFIG||{};
 const SB_URL=SB.url,SB_KEY=SB.anonKey;
-let currentUser=null,sbAccessToken=null;
+let currentUser=null,sbAccessToken=null,refreshPromise=null;
 
 function sbHeaders(extra={}){
   return {'apikey':SB_KEY,'Content-Type':'application/json','Accept':'application/json',...sbAccessToken?{'Authorization':`Bearer ${sbAccessToken}`}:{},...extra};
 }
-async function sbFetch(path,opts={}){
+function saveSession(d){
+  if(d.access_token){sbAccessToken=d.access_token;localStorage.setItem('pipeline_token',d.access_token)}
+  if(d.refresh_token)localStorage.setItem('pipeline_refresh_token',d.refresh_token);
+  if(d.user)currentUser=d.user;
+}
+function clearSession(){
+  localStorage.removeItem('pipeline_token');
+  localStorage.removeItem('pipeline_refresh_token');
+  sbAccessToken=null;currentUser=null;
+}
+function getTokenExpiry(token){
+  try{const p=JSON.parse(atob(token.split('.')[1]));return p.exp?p.exp*1000:null}catch{return null}
+}
+function isAuthError(status,msg){return status===401||/jwt|token|expired|invalid/i.test(msg||'')}
+async function refreshSession(){
+  if(refreshPromise)return refreshPromise;
+  const rt=localStorage.getItem('pipeline_refresh_token');
+  if(!rt)throw new Error('No refresh token');
+  refreshPromise=(async()=>{
+    try{
+      const r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:rt})});
+      const d=await r.json();
+      if(!r.ok)throw new Error(d.error_description||d.msg||d.message||'Refresh failed');
+      saveSession(d);
+      return d.access_token;
+    }finally{refreshPromise=null}
+  })();
+  return refreshPromise;
+}
+async function refreshSessionIfNeeded(){
+  const refresh=localStorage.getItem('pipeline_refresh_token');
+  if(!refresh)return;
+  const token=localStorage.getItem('pipeline_token');
+  const exp=getTokenExpiry(token);
+  if(!token||!exp||Date.now()>exp-60000)await refreshSession();
+}
+async function sbFetch(path,opts={},retry=false){
   const r=await fetch(SB_URL+path,{...opts,headers:sbHeaders(opts.headers)});
-  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.message||e.msg||e.error_description||`HTTP ${r.status}`)}
+  if(!r.ok){
+    const e=await r.json().catch(()=>({}));
+    const msg=e.message||e.msg||e.error_description||`HTTP ${r.status}`;
+    if(isAuthError(r.status,msg)&&!retry&&localStorage.getItem('pipeline_refresh_token')){
+      try{await refreshSession();return sbFetch(path,opts,true)}catch{
+        clearSession();showAuthUI();throw new Error('Session expired — please sign in again');
+      }
+    }
+    throw new Error(msg);
+  }
   const ct=r.headers.get('content-type')||'';
   return ct.includes('json')?r.json():r.text();
 }
@@ -978,13 +1023,26 @@ async function sbFetch(path,opts={}){
 // ── Auth ──
 async function checkAuth(){
   const token=localStorage.getItem('pipeline_token');
-  if(!token){showAuthUI();return}
-  sbAccessToken=token;
+  const refresh=localStorage.getItem('pipeline_refresh_token');
+  if(!token&&!refresh){showAuthUI();return}
+  if(token)sbAccessToken=token;
   try{
-    const user=await sbFetch('/auth/v1/user',{headers:{'Authorization':`Bearer ${token}`}});
+    await refreshSessionIfNeeded();
+    const user=await sbFetch('/auth/v1/user');
     currentUser=user;
     onAuthSuccess(user.email||user.id);
-  }catch{localStorage.removeItem('pipeline_token');showAuthUI()}
+  }catch{
+    if(refresh){
+      try{
+        await refreshSession();
+        const user=await sbFetch('/auth/v1/user');
+        currentUser=user;
+        onAuthSuccess(user.email||user.id);
+        return;
+      }catch{}
+    }
+    clearSession();showAuthUI();
+  }
 }
 
 async function signUp(){
@@ -997,9 +1055,7 @@ async function signUp(){
     const d=await r.json();
     if(!r.ok)return showAuthLoading(false),setAuthError(d.msg||d.message||'Sign up failed');
     const user=d.user||d;
-    const token=d.access_token||d.session?.access_token||null;
-    if(token){sbAccessToken=token;localStorage.setItem('pipeline_token',token)}
-    currentUser=user;
+    saveSession({access_token:d.access_token||d.session?.access_token,refresh_token:d.refresh_token||d.session?.refresh_token,user});
     showAuthLoading(false);onAuthSuccess(user.email||d.email);
   }catch(e){showAuthLoading(false);setAuthError(e.message)}
 }
@@ -1012,14 +1068,13 @@ async function signIn(){
     const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
     const d=await r.json();
     if(!r.ok)return showAuthLoading(false),setAuthError(d.msg||d.error_description||d.message||'Invalid credentials');
-    sbAccessToken=d.access_token;localStorage.setItem('pipeline_token',d.access_token);
-    currentUser=d.user;showAuthLoading(false);onAuthSuccess(d.user.email);
+    saveSession(d);showAuthLoading(false);onAuthSuccess(d.user.email);
   }catch(e){showAuthLoading(false);setAuthError(e.message)}
 }
 
 async function signOut(){
   try{await fetch(SB_URL+'/auth/v1/logout',{method:'POST',headers:sbHeaders()})}catch{}
-  localStorage.removeItem('pipeline_token');currentUser=null;sbAccessToken=null;entries=[];
+  clearSession();entries=[];
   document.getElementById('authOverlay').style.display='flex';document.getElementById('authBar').style.display='none';
   document.querySelectorAll('.auth-form input').forEach(i=>i.value='');document.getElementById('authError').textContent='';
 }
@@ -1558,6 +1613,7 @@ function init(){
   applyTheme(savedTheme);
   // Start auth flow
   checkAuth();
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&localStorage.getItem('pipeline_refresh_token'))refreshSessionIfNeeded().catch(()=>{})});
 }
 init();
 </script>
