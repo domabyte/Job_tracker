@@ -213,11 +213,12 @@ body{
   font-size:15px;position:relative;
 }
 .theme-toggle:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-medium)}
-.theme-toggle .icon-sun,.theme-toggle .icon-moon{position:absolute;transition:all 0.3s ease}
-[data-theme="light"] .theme-toggle .icon-sun{opacity:1;transform:rotate(0) scale(1)}
-[data-theme="light"] .theme-toggle .icon-moon{opacity:0;transform:rotate(90deg) scale(0)}
-[data-theme="dark"] .theme-toggle .icon-sun{opacity:0;transform:rotate(-90deg) scale(0)}
-[data-theme="dark"] .theme-toggle .icon-moon{opacity:1;transform:rotate(0) scale(1)}
+.theme-toggle .icon-sun,.theme-toggle .icon-moon,
+.auth-theme-toggle .icon-sun,.auth-theme-toggle .icon-moon{position:absolute;transition:all 0.3s ease}
+[data-theme="light"] .theme-toggle .icon-sun,[data-theme="light"] .auth-theme-toggle .icon-sun{opacity:1;transform:rotate(0) scale(1)}
+[data-theme="light"] .theme-toggle .icon-moon,[data-theme="light"] .auth-theme-toggle .icon-moon{opacity:0;transform:rotate(90deg) scale(0)}
+[data-theme="dark"] .theme-toggle .icon-sun,[data-theme="dark"] .auth-theme-toggle .icon-sun{opacity:0;transform:rotate(-90deg) scale(0)}
+[data-theme="dark"] .theme-toggle .icon-moon,[data-theme="dark"] .auth-theme-toggle .icon-moon{opacity:1;transform:rotate(0) scale(1)}
 
 /* ══════════════════════════════════════════════
    BUTTONS
@@ -582,6 +583,9 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 .auth-bar{display:flex;align-items:center;gap:8px;padding-left:10px;margin-left:2px;border-left:1px solid var(--border);flex-shrink:0}
 .auth-user-email{font-size:11px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.auth-card{position:relative}
+.auth-theme-toggle{position:absolute;top:12px;right:12px;width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer;transition:all var(--transition-smooth);font-size:14px}
+.auth-theme-toggle:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-medium)}
 
 
 </style>
@@ -911,6 +915,10 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 <!-- ═══ AUTH OVERLAY ═══ -->
 <div class="auth-overlay" id="authOverlay">
   <div class="auth-card glass">
+    <button class="auth-theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+      <span class="icon-sun">☀️</span>
+      <span class="icon-moon">🌙</span>
+    </button>
     <div class="auth-logo">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 12l2 2 4-4"/></svg>
       <h1>Pipeline</h1>
@@ -988,11 +996,11 @@ async function signUp(){
     const r=await fetch(SB_URL+'/auth/v1/signup',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
     const d=await r.json();
     if(!r.ok)return showAuthLoading(false),setAuthError(d.msg||d.message||'Sign up failed');
-    if(d.id&&d.email){
-      sbAccessToken=d.access_token||null;currentUser=d.user||d;
-      if(sbAccessToken)localStorage.setItem('pipeline_token',sbAccessToken);
-      showAuthLoading(false);onAuthSuccess(d.email);
-    }else{showAuthLoading(false);setAuthError('Check your email for the confirmation link.')}
+    const user=d.user||d;
+    const token=d.access_token||d.session?.access_token||null;
+    if(token){sbAccessToken=token;localStorage.setItem('pipeline_token',token)}
+    currentUser=user;
+    showAuthLoading(false);onAuthSuccess(user.email||d.email);
   }catch(e){showAuthLoading(false);setAuthError(e.message)}
 }
 
@@ -1553,6 +1561,5 @@ function init(){
 }
 init();
 </script>
-<!-- oc-ds-test -->
 </body>
 </html>
