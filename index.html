@@ -8,8 +8,10 @@
 (function(){
   var r=document.documentElement,t=localStorage.getItem('pipeline_theme');
   r.setAttribute('data-theme',t==='dark'?'dark':'light');
-  if(localStorage.getItem('pipeline_token')||localStorage.getItem('pipeline_refresh_token'))r.classList.remove('auth-open');
-  else r.classList.add('auth-open');
+  var u=location.href,h=location.hash||'',q=location.search||'';
+  var recovering=/type=recovery|token_hash=|[?&]code=/.test(h+q);
+  if(recovering||!(localStorage.getItem('pipeline_token')||localStorage.getItem('pipeline_refresh_token')))r.classList.add('auth-open');
+  else r.classList.remove('auth-open');
 })();
 </script>
 <style>html,body{background:#f5f5f7}html[data-theme="dark"],html[data-theme="dark"] body{background:#0a0c14;color:#e8ecf5}</style>
@@ -1283,7 +1285,10 @@ function togglePw(id,btn){
   inp.type=isPassword?'text':'password';
   btn.textContent=isPassword?'🙈':'👁️';
 }
-function authRedirectUrl(){return location.origin+location.pathname}
+function authRedirectUrl(){
+  // Match Supabase Site URL exactly (no trailing slash) — mismatch drops tokens on redirect
+  return (location.origin+location.pathname).replace(/\/index\.html$/i,'').replace(/\/$/,'');
+}
 async function resetPassword(){
   const email=(document.getElementById('authEmail').value||document.getElementById('authEmailUp').value||'').trim();
   if(!email)return setAuthError('Enter your email first');
@@ -1296,11 +1301,13 @@ async function resetPassword(){
   }catch(e){showAuthLoading(false);setAuthError(e.message)}
 }
 
-// Recovery tokens may arrive in hash (#access_token=…) or query (?token_hash=…&type=recovery)
+// Recovery: hash (#access_token=…), query (?token_hash=…), or PKCE (?code=…)
 function parseRecoveryFromUrl(){
   const qs=new URLSearchParams(location.search);
   const hashRaw=(location.hash||'').replace(/^#/,'');
   const hashQs=hashRaw?new URLSearchParams(hashRaw):null;
+  const code=qs.get('code');
+  if(code)return{code};
   const type=qs.get('type')||hashQs?.get('type');
   if(type==='recovery'){
     const at=hashQs?.get('access_token')||qs.get('access_token');
@@ -1308,8 +1315,9 @@ function parseRecoveryFromUrl(){
     if(at)return{access_token:at,refresh_token:rt};
     const th=qs.get('token_hash')||hashQs?.get('token_hash');
     if(th)return{token_hash:th};
+    const tok=qs.get('token')||hashQs?.get('token');
+    if(tok)return{token:tok};
   }
-  // Fallback: hash with JWT tokens (URLSearchParams can choke on them)
   const h=location.hash||'';
   if(h.includes('type=recovery')){
     const get=(key)=>{const m=h.match(new RegExp(key+'=([^&]*)'));return m?decodeURIComponent(m[1]):''};
@@ -1325,7 +1333,27 @@ function showRecoveryForm(){
   document.getElementById('authTabs').style.display='none';
   showAuthForm('reset');
 }
+async function verifyRecoveryToken(body){
+  const resp=await fetch(SB_URL+'/auth/v1/verify',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({type:'recovery',...body})});
+  const d=await resp.json();
+  if(!resp.ok)throw new Error(d.msg||d.message||d.error_description||'Invalid or expired reset link');
+  return d;
+}
+async function exchangeRecoveryCode(code){
+  const resp=await fetch(SB_URL+'/auth/v1/token?grant_type=pkce',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({auth_code:code})});
+  const d=await resp.json();
+  if(!resp.ok)throw new Error(d.msg||d.message||d.error_description||'Invalid or expired reset link — request a new one');
+  return d;
+}
 async function handleRecovery(){
+  const qs=new URLSearchParams(location.search);
+  const err=qs.get('error_description')||qs.get('error');
+  if(err&&!parseRecoveryFromUrl()){
+    showRecoveryForm();
+    setAuthError(decodeURIComponent(err.replace(/\+/g,' ')));
+    history.replaceState(null,'',location.pathname);
+    return true;
+  }
   const r=parseRecoveryFromUrl();
   if(!r)return false;
   showRecoveryForm();
@@ -1336,9 +1364,9 @@ async function handleRecovery(){
   }
   showAuthLoading(true);setAuthError('');
   try{
-    const resp=await fetch(SB_URL+'/auth/v1/verify',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({type:'recovery',token_hash:r.token_hash})});
-    const d=await resp.json();
-    if(!resp.ok)throw new Error(d.msg||d.message||d.error_description||'Invalid or expired reset link');
+    let d;
+    if(r.code)d=await exchangeRecoveryCode(r.code);
+    else d=await verifyRecoveryToken(r.token_hash?{token_hash:r.token_hash}:{token:r.token});
     window._recoveryToken=d.access_token;
     window._recoveryRefresh=d.refresh_token||'';
     showAuthLoading(false);
