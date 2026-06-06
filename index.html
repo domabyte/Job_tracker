@@ -1941,13 +1941,18 @@ volumes:
 `;
 const RM_FIX_CORS=`docker rm -f pipeline-resume-matcher 2>/dev/null; docker run -d --name pipeline-resume-matcher -p ${RM_PORT}:3000 -v resume-matcher-data:/app/backend/data -e FRONTEND_BASE_URL=http://127.0.0.1:3000 -e 'CORS_ORIGINS=["http://localhost:${RM_PORT}","http://127.0.0.1:${RM_PORT}","http://localhost:8080","http://127.0.0.1:8080","http://localhost:5500","http://127.0.0.1:5500","http://localhost:5173","http://127.0.0.1:5173","https://domabyte.github.io"]' --restart unless-stopped ghcr.io/srbhr/resume-matcher:latest; echo "Set Pipeline URL to http://localhost:${RM_PORT}"`;
 let rmSetupOs=(/Win/i.test(navigator.platform)||/Windows/i.test(navigator.userAgent))?'win':'mac';
-const RM_RUN_MAC=`mkdir -p ~/resume-matcher && cd ~/resume-matcher && cat > docker-compose.yml << 'EOF'
+const RM_RUN_MAC=`mkdir -p ~/resume-matcher && cd ~/resume-matcher
+# Write docker-compose.yml (overwrites existing — ensures latest CORS config)
+cat > docker-compose.yml << 'EOF'
 ${RM_COMPOSE_YML}EOF
 command -v docker >/dev/null 2>&1 || { echo "Install Docker Desktop first."; exit 1; }
 docker info >/dev/null 2>&1 || { echo "Open Docker Desktop until Running, then run again."; exit 1; }
+# Remove old container if exists (silent)
 docker rm -f pipeline-resume-matcher 2>/dev/null || true
 docker compose -f docker-compose.yml up -d
-echo "Set Pipeline URL to http://localhost:${RM_PORT}"`;
+echo ""
+echo "Pipeline URL: http://localhost:${RM_PORT}"
+echo "Need Chrome flag? → chrome://flags/#unsafely-treat-insecure-origin-as-secure"`;
 const RM_RUN_WIN=`$dir="$env:USERPROFILE\\resume-matcher"
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Set-Location $dir
