@@ -1298,10 +1298,11 @@ async function resetPassword(){
 function parseRecoveryHash(){
   const h=location.hash||'';
   if(!h||!h.includes('type=recovery'))return null;
-  const p=new URLSearchParams(h.replace(/^#/,'').split('&').map(p=>p.split('=').map(decodeURIComponent).join('=')).join('&'));
-  const at=p.get('access_token'),rt=p.get('refresh_token');
+  // Parse hash manually — JWT tokens can trip up URLSearchParams
+  const get=(key)=>{const m=h.match(new RegExp(key+'=([^&]*)'));return m?decodeURIComponent(m[1]):''};
+  const at=get('access_token'),rt=get('refresh_token');
   if(!at)return null;
-  return {access_token:at,refresh_token:rt||''};
+  return {access_token:at,refresh_token:rt};
 }
 function handleRecovery(){
   const r=parseRecoveryHash();
