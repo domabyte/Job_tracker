@@ -999,6 +999,14 @@ html.auth-open .auth-overlay{display:flex}
         <div class="rm-setup" id="rmSetup">
           <h4>Setup Resume Matcher (3 steps)</h4>
           <p>Runs on your computer only. This page stays your job tracker — Docker runs the resume tool locally.</p>
+          <details style="margin-bottom:14px;font-size:11px;color:var(--text-secondary);background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+            <summary style="cursor:pointer;font-weight:500">Chrome users: skip HTTPS issue (1 flag)</summary>
+            <p style="margin:8px 0 0 0;line-height:1.55">
+              Open <code style="font-size:10px">chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>,
+              add <code style="font-size:10px">http://localhost:18765</code>, enable, relaunch Chrome.
+              Then just connect to <code style="font-size:10px">http://localhost:18765</code> — no Docker changes, no tunnels.
+            </p>
+          </details>
           <div class="rm-steps">
             <div class="rm-step">
               <span class="rm-step-num">1</span>
