@@ -1294,6 +1294,47 @@ async function resetPassword(){
   }catch(e){showAuthLoading(false);setAuthError(e.message)}
 }
 
+// Parse URL hash for recovery tokens (from password reset email)
+function parseRecoveryHash(){
+  const h=location.hash||'';
+  if(!h||!h.includes('type=recovery'))return null;
+  const p=new URLSearchParams(h.replace(/^#/,'').split('&').map(p=>p.split('=').map(decodeURIComponent).join('=')).join('&'));
+  const at=p.get('access_token'),rt=p.get('refresh_token');
+  if(!at)return null;
+  return {access_token:at,refresh_token:rt||''};
+}
+function handleRecovery(){
+  const r=parseRecoveryHash();
+  if(!r)return;
+  // Remove hash from URL without triggering reload
+  history.replaceState(null,'',location.pathname+location.search);
+  // Show reset form
+  document.getElementById('authTabs').style.display='none';
+  showAuthForm('reset');
+  // Store tokens for confirmReset()
+  window._recoveryToken=r.access_token;
+  window._recoveryRefresh=r.refresh_token;
+}
+async function confirmReset(){
+  const pw=document.getElementById('authPasswordReset').value;
+  const cf=document.getElementById('authPasswordConfirm').value;
+  if(!pw||pw.length<6)return setAuthError('Password min 6 chars');
+  if(pw!==cf)return setAuthError('Passwords do not match');
+  const token=window._recoveryToken;
+  if(!token)return setAuthError('Session expired — request a new reset link');
+  showAuthLoading(true);setAuthError('');
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/user',{method:'PUT',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({password:pw})});
+    if(!r.ok){const d=await r.json();throw new Error(d.msg||d.message||'Update failed')}
+    // Save session with new token
+    const user=await r.json();
+    saveSession({access_token:token,refresh_token:window._recoveryRefresh,user});
+    showAuthLoading(false);
+    document.getElementById('authTabs').style.display='';
+    onAuthSuccess(user.email||user.id);
+  }catch(e){showAuthLoading(false);setAuthError(e.message)}
+}
+
 async function signUp(){
   const email=document.getElementById('authEmailUp').value.trim(),pass=document.getElementById('authPasswordUp').value;
   if(!email||!pass)return setAuthError('Email and password required');
@@ -1350,6 +1391,7 @@ function showAuthForm(mode){
   document.getElementById('authTabSignUp').classList.toggle('active',mode==='signup');
   document.getElementById('authFormSignIn').style.display=mode==='signin'?'flex':'none';
   document.getElementById('authFormSignUp').style.display=mode==='signup'?'flex':'none';
+  document.getElementById('authFormReset').style.display=mode==='reset'?'flex':'none';
   document.getElementById('authError').textContent='';
 }
 function showAuthLoading(v){document.getElementById('authLoading').style.display=v?'flex':'none';document.querySelectorAll('.auth-form,.auth-btn,.auth-tabs,.auth-logo').forEach(e=>e.style.opacity=v?'0.4':'1')}
@@ -2386,6 +2428,8 @@ function init(){
   // Restore theme
   const savedTheme=localStorage.getItem(THEME_KEY)||'light';
   applyTheme(savedTheme);
+  // Check for password reset tokens in URL
+  handleRecovery();
   // Start auth flow
   checkAuth();
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&localStorage.getItem('pipeline_refresh_token'))refreshSessionIfNeeded().catch(()=>{})});
@@ -2440,6 +2484,27 @@ init();
         </div>
       </div>
       <button class="btn btn-primary auth-btn" onclick="signUp()">Sign Up</button>
+    </div>
+    <div id="authFormReset" class="auth-form" style="display:none">
+      <div style="text-align:center;margin-bottom:4px">
+        <strong style="font-size:14px">Set new password</strong>
+      </div>
+      <div>
+        <label class="auth-label" for="authPasswordReset">New password</label>
+        <div class="pw-wrap">
+          <input type="password" class="auth-input" id="authPasswordReset" placeholder="Min 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')confirmReset()">
+          <button class="pw-toggle" type="button" onclick="togglePw('authPasswordReset',this)" tabindex="-1" aria-label="Toggle password visibility">👁️</button>
+        </div>
+      </div>
+      <div>
+        <label class="auth-label" for="authPasswordConfirm">Confirm password</label>
+        <div class="pw-wrap">
+          <input type="password" class="auth-input" id="authPasswordConfirm" placeholder="Repeat password" autocomplete="new-password" onkeydown="if(event.key==='Enter')confirmReset()">
+          <button class="pw-toggle" type="button" onclick="togglePw('authPasswordConfirm',this)" tabindex="-1" aria-label="Toggle password visibility">👁️</button>
+        </div>
+      </div>
+      <button class="btn btn-primary auth-btn" onclick="confirmReset()">Update password</button>
+      <a onclick="showAuthForm('signin')" style="text-align:center;font-size:11px;color:var(--accent);cursor:pointer;margin-top:4px">← Back to sign in</a>
     </div>
     </div>
     <div class="auth-error" id="authError"></div>
