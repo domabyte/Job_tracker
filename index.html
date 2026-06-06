@@ -1283,38 +1283,71 @@ function togglePw(id,btn){
   inp.type=isPassword?'text':'password';
   btn.textContent=isPassword?'🙈':'👁️';
 }
+function authRedirectUrl(){return location.origin+location.pathname}
 async function resetPassword(){
   const email=(document.getElementById('authEmail').value||document.getElementById('authEmailUp').value||'').trim();
   if(!email)return setAuthError('Enter your email first');
   showAuthLoading(true);setAuthError('');
   try{
-    const r=await fetch(SB_URL+'/auth/v1/recover?redirect_to=https://domabyte.github.io/Job_tracker/',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const redirect=encodeURIComponent(authRedirectUrl());
+    const r=await fetch(SB_URL+'/auth/v1/recover?redirect_to='+redirect,{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email})});
     if(!r.ok){const d=await r.json();throw new Error(d.msg||d.message||'Reset failed')}
     showAuthLoading(false);setAuthError('Check your email for reset link ✓');
   }catch(e){showAuthLoading(false);setAuthError(e.message)}
 }
 
-// Parse URL hash for recovery tokens (from password reset email)
-function parseRecoveryHash(){
+// Recovery tokens may arrive in hash (#access_token=…) or query (?token_hash=…&type=recovery)
+function parseRecoveryFromUrl(){
+  const qs=new URLSearchParams(location.search);
+  const hashRaw=(location.hash||'').replace(/^#/,'');
+  const hashQs=hashRaw?new URLSearchParams(hashRaw):null;
+  const type=qs.get('type')||hashQs?.get('type');
+  if(type==='recovery'){
+    const at=hashQs?.get('access_token')||qs.get('access_token');
+    const rt=hashQs?.get('refresh_token')||qs.get('refresh_token')||'';
+    if(at)return{access_token:at,refresh_token:rt};
+    const th=qs.get('token_hash')||hashQs?.get('token_hash');
+    if(th)return{token_hash:th};
+  }
+  // Fallback: hash with JWT tokens (URLSearchParams can choke on them)
   const h=location.hash||'';
-  if(!h||!h.includes('type=recovery'))return null;
-  // Parse hash manually — JWT tokens can trip up URLSearchParams
-  const get=(key)=>{const m=h.match(new RegExp(key+'=([^&]*)'));return m?decodeURIComponent(m[1]):''};
-  const at=get('access_token'),rt=get('refresh_token');
-  if(!at)return null;
-  return {access_token:at,refresh_token:rt};
+  if(h.includes('type=recovery')){
+    const get=(key)=>{const m=h.match(new RegExp(key+'=([^&]*)'));return m?decodeURIComponent(m[1]):''};
+    const at=get('access_token');
+    if(at)return{access_token:at,refresh_token:get('refresh_token')};
+  }
+  return null;
 }
-function handleRecovery(){
-  const r=parseRecoveryHash();
-  if(!r)return;
-  // Remove hash from URL without triggering reload
-  history.replaceState(null,'',location.pathname+location.search);
-  // Show reset form
+function showRecoveryForm(){
+  clearSession();
+  history.replaceState(null,'',location.pathname);
+  showAuthUI();
   document.getElementById('authTabs').style.display='none';
   showAuthForm('reset');
-  // Store tokens for confirmReset()
-  window._recoveryToken=r.access_token;
-  window._recoveryRefresh=r.refresh_token;
+}
+async function handleRecovery(){
+  const r=parseRecoveryFromUrl();
+  if(!r)return false;
+  showRecoveryForm();
+  if(r.access_token){
+    window._recoveryToken=r.access_token;
+    window._recoveryRefresh=r.refresh_token;
+    return true;
+  }
+  showAuthLoading(true);setAuthError('');
+  try{
+    const resp=await fetch(SB_URL+'/auth/v1/verify',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({type:'recovery',token_hash:r.token_hash})});
+    const d=await resp.json();
+    if(!resp.ok)throw new Error(d.msg||d.message||d.error_description||'Invalid or expired reset link');
+    window._recoveryToken=d.access_token;
+    window._recoveryRefresh=d.refresh_token||'';
+    showAuthLoading(false);
+    return true;
+  }catch(e){
+    showAuthLoading(false);
+    setAuthError(e.message);
+    return true;
+  }
 }
 async function confirmReset(){
   const pw=document.getElementById('authPasswordReset').value;
@@ -2425,14 +2458,11 @@ document.addEventListener('keydown',e=>{
 // ══════════════════════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════════════════════
-function init(){
-  // Restore theme
+async function init(){
   const savedTheme=localStorage.getItem(THEME_KEY)||'light';
   applyTheme(savedTheme);
-  // Check for password reset tokens in URL
-  handleRecovery();
-  // Start auth flow
-  checkAuth();
+  const recovering=await handleRecovery();
+  if(!recovering)await checkAuth();
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&localStorage.getItem('pipeline_refresh_token'))refreshSessionIfNeeded().catch(()=>{})});
 }
 init();
