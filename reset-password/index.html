@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<script>
+(function(){
+  var r=document.documentElement,t=localStorage.getItem('pipeline_theme');
+  r.setAttribute('data-theme',t==='dark'?'dark':'light');
+})();
+</script>
+<title>Reset Password — Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  window.SUPABASE_CONFIG={
+    url:'https://rctscnzzcyxrsgwhqsjk.supabase.co',
+    anonKey:'sb_publishable_r2Q9iD-xojFB2aMOVDs29g_9NTHyPBz'
+  };
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root,[data-theme="light"]{
+  --bg-base:#f5f5f7;--bg-surface:#fff;--bg-elevated:#fafafa;--bg-hover:#ebebed;
+  --border:rgba(0,0,0,0.07);--border-medium:rgba(0,0,0,0.12);
+  --text-primary:#1d1d1f;--text-secondary:#6e6e73;--text-muted:#aeaeb2;
+  --accent:#0066cc;--accent-hover:#0077ed;--accent-glow:rgba(0,102,204,0.15);
+  --red:#ff3b30;--radius:10px;--radius-xl:20px;
+  --shadow-lg:0 20px 60px rgba(0,0,0,0.08);
+}
+[data-theme="dark"]{
+  --bg-base:#0a0c14;--bg-surface:#181c2a;--bg-elevated:#10131c;--bg-hover:#1e2130;
+  --border:rgba(255,255,255,0.07);--border-medium:rgba(255,255,255,0.14);
+  --text-primary:#e8ecf5;--text-secondary:#8b92ab;--text-muted:#6e7589;
+  --accent:#4f8ef7;--accent-hover:#6ba0f8;--accent-glow:rgba(79,142,247,0.2);
+  --red:#ff453a;
+}
+html,body{min-height:100%;font-family:'JetBrains Mono',system-ui,sans-serif;background:var(--bg-base);color:var(--text-primary)}
+[data-theme="light"] body{background:radial-gradient(ellipse at 50% 15%,rgba(0,102,204,0.09) 0%,#ececee 45%,var(--bg-base) 100%)}
+[data-theme="dark"] body{background:radial-gradient(ellipse at 50% 15%,rgba(79,142,247,0.09) 0%,#0d1018 45%,var(--bg-base) 100%)}
+.page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{position:relative;width:400px;max-width:92vw;padding:36px 32px 28px;border-radius:var(--radius-xl);background:var(--bg-surface);border:1px solid var(--border-medium);box-shadow:var(--shadow-lg);text-align:center}
+.logo h1{font-size:22px;font-weight:700;margin:8px 0 4px}
+.subtitle{color:var(--text-secondary);font-size:13px;margin-bottom:24px}
+.form{display:flex;flex-direction:column;gap:14px;text-align:left}
+.form>div{display:flex;flex-direction:column;gap:6px}
+label{font-size:11px;font-weight:600;color:var(--text-secondary);letter-spacing:0.03em;text-transform:uppercase}
+input{width:100%;padding:12px 14px;border:1px solid var(--border-medium);border-radius:var(--radius);background:var(--bg-elevated);color:var(--text-primary);font-size:14px;font-family:inherit;outline:none}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:40px}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px}
+.btn{width:100%;margin-top:6px;padding:11px 18px;font-size:13px;font-weight:600;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;font-family:inherit}
+.btn:hover{background:var(--accent-hover)}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.error{font-size:12px;color:var(--red);margin-top:10px;min-height:18px;text-align:center}
+.loading{display:none;align-items:center;justify-content:center;gap:8px;margin-top:16px;color:var(--text-secondary);font-size:13px}
+.loading.show{display:flex}
+.spinner{width:16px;height:16px;border:2px solid var(--border-medium);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.back{display:block;text-align:center;font-size:11px;color:var(--accent);cursor:pointer;margin-top:12px;text-decoration:none}
+.theme-toggle{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:8px;background:var(--bg-elevated);border:1px solid var(--border-medium);cursor:pointer;font-size:14px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="card">
+    <button class="theme-toggle" type="button" onclick="toggleTheme()" title="Toggle theme"><span id="themeIcon">☀️</span></button>
+    <div class="logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 12l2 2 4-4"/></svg>
+      <h1>Set new password</h1>
+      <p class="subtitle">Pipeline Job Tracker</p>
+    </div>
+    <div id="formWrap" class="hidden">
+      <div class="form">
+        <div>
+          <label for="pw">New password</label>
+          <div class="pw-wrap">
+            <input type="password" id="pw" placeholder="Min 6 characters" autocomplete="new-password">
+            <button class="pw-toggle" type="button" onclick="togglePw('pw',this)" tabindex="-1">👁️</button>
+          </div>
+        </div>
+        <div>
+          <label for="pw2">Confirm password</label>
+          <div class="pw-wrap">
+            <input type="password" id="pw2" placeholder="Repeat password" autocomplete="new-password">
+            <button class="pw-toggle" type="button" onclick="togglePw('pw2',this)" tabindex="-1">👁️</button>
+          </div>
+        </div>
+        <button class="btn" id="submitBtn" onclick="confirmReset()">Update password</button>
+      </div>
+      <a class="back" href="../">← Back to sign in</a>
+    </div>
+    <div class="error" id="err"></div>
+    <div class="loading" id="loading"><div class="spinner"></div><span>Verifying link…</span></div>
+  </div>
+</div>
+<script>
+const SB=window.SUPABASE_CONFIG||{};
+const SB_URL=SB.url,SB_KEY=SB.anonKey;
+let recoveryToken=null,recoveryRefresh=null;
+
+function appHome(){return location.origin+location.pathname.replace(/\/reset-password\/?(index\.html)?$/i,'')+'/'}
+function setErr(m){document.getElementById('err').textContent=m||''}
+function setLoading(v){document.getElementById('loading').classList.toggle('show',v);document.getElementById('formWrap').classList.toggle('hidden',v)}
+function showForm(){document.getElementById('formWrap').classList.remove('hidden');document.getElementById('loading').classList.remove('show')}
+function toggleTheme(){
+  const d=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',d?'light':'dark');
+  localStorage.setItem('pipeline_theme',d?'light':'dark');
+  document.getElementById('themeIcon').textContent=d?'☀️':'🌙';
+}
+function togglePw(id,btn){
+  const inp=document.getElementById(id);
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  btn.textContent=show?'🙈':'👁️';
+}
+function parseRecoveryFromUrl(){
+  const qs=new URLSearchParams(location.search);
+  const hashRaw=(location.hash||'').replace(/^#/,'');
+  const hashQs=hashRaw?new URLSearchParams(hashRaw):null;
+  const code=qs.get('code');
+  if(code)return{code};
+  const type=qs.get('type')||hashQs?.get('type');
+  if(type==='recovery'){
+    const at=hashQs?.get('access_token')||qs.get('access_token');
+    if(at)return{access_token:at,refresh_token:hashQs?.get('refresh_token')||qs.get('refresh_token')||''};
+    const th=qs.get('token_hash')||hashQs?.get('token_hash');
+    if(th)return{token_hash:th};
+    const tok=qs.get('token')||hashQs?.get('token');
+    if(tok)return{token:tok};
+  }
+  const h=location.hash||'';
+  if(h.includes('type=recovery')){
+    const get=(k)=>{const m=h.match(new RegExp(k+'=([^&]*)'));return m?decodeURIComponent(m[1]):''};
+    const at=get('access_token');
+    if(at)return{access_token:at,refresh_token:get('refresh_token')};
+  }
+  return null;
+}
+async function verifyRecovery(body){
+  const r=await fetch(SB_URL+'/auth/v1/verify',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({type:'recovery',...body})});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.msg||d.message||d.error_description||'Invalid or expired reset link');
+  return d;
+}
+async function exchangeCode(code){
+  const r=await fetch(SB_URL+'/auth/v1/token?grant_type=pkce',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({auth_code:code})});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.msg||d.message||d.error_description||'Invalid or expired reset link');
+  return d;
+}
+async function initRecovery(){
+  const qs=new URLSearchParams(location.search);
+  const err=qs.get('error_description')||qs.get('error');
+  if(err&&!parseRecoveryFromUrl()){setErr(decodeURIComponent(err.replace(/\+/g,' ')));history.replaceState(null,'',location.pathname);return}
+  const r=parseRecoveryFromUrl();
+  if(!r){setErr('No reset token — request a new link from the sign-in page.');return}
+  history.replaceState(null,'',location.pathname);
+  setLoading(true);
+  try{
+    let d;
+    if(r.access_token){recoveryToken=r.access_token;recoveryRefresh=r.refresh_token||''}
+    else if(r.code)d=await exchangeCode(r.code);
+    else d=await verifyRecovery(r.token_hash?{token_hash:r.token_hash}:{token:r.token});
+    if(d){recoveryToken=d.access_token;recoveryRefresh=d.refresh_token||''}
+    setLoading(false);showForm();
+    document.getElementById('pw').focus();
+  }catch(e){setLoading(false);setErr(e.message)}
+}
+async function confirmReset(){
+  const pw=document.getElementById('pw').value;
+  const cf=document.getElementById('pw2').value;
+  if(!pw||pw.length<6)return setErr('Password min 6 chars');
+  if(pw!==cf)return setErr('Passwords do not match');
+  if(!recoveryToken)return setErr('Session expired — request a new reset link');
+  document.getElementById('submitBtn').disabled=true;
+  setErr('');
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/user',{method:'PUT',headers:{'apikey':SB_KEY,'Content-Type':'application/json','Authorization':'Bearer '+recoveryToken},body:JSON.stringify({password:pw})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.msg||d.message||'Update failed');
+    if(recoveryToken)localStorage.setItem('pipeline_token',recoveryToken);
+    if(recoveryRefresh)localStorage.setItem('pipeline_refresh_token',recoveryRefresh);
+    location.href=appHome();
+  }catch(e){setErr(e.message);document.getElementById('submitBtn').disabled=false}
+}
+document.getElementById('themeIcon').textContent=document.documentElement.getAttribute('data-theme')==='dark'?'🌙':'☀️';
+document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')confirmReset()});
+document.getElementById('pw2').addEventListener('keydown',e=>{if(e.key==='Enter')confirmReset()});
+initRecovery();
+</script>
+</body>
+</html>
