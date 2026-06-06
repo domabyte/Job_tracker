@@ -1,8 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<script>
+(function(){
+  var r=document.documentElement,t=localStorage.getItem('pipeline_theme');
+  r.setAttribute('data-theme',t==='dark'?'dark':'light');
+  if(localStorage.getItem('pipeline_token')||localStorage.getItem('pipeline_refresh_token'))r.classList.remove('auth-open');
+  else r.classList.add('auth-open');
+})();
+</script>
+<style>html,body{background:#f5f5f7}html[data-theme="dark"],html[data-theme="dark"] body{background:#0a0c14;color:#e8ecf5}</style>
 <title>Pipeline — Job Tracker</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%230066cc'/%3E%3Cstop offset='100%25' stop-color='%235856d6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='18' fill='white'%3E%E2%9F%B3%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -419,6 +429,57 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 .as-label{font-size:10px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:0.03em}
 
 /* ══════════════════════════════════════════════
+   RESUME MATCHER (embedded app)
+   ══════════════════════════════════════════════ */
+.rm-wrap{display:flex;flex-direction:column;gap:12px;min-height:calc(100vh - 220px)}
+.rm-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);position:sticky;top:52px;z-index:90}
+.rm-toolbar-title{font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap}
+.rm-url{flex:1;min-width:200px;padding:8px 12px;font-size:11px;background:var(--bg-elevated);border:1px solid var(--border-medium);border-radius:var(--radius);color:var(--text-primary);font-family:inherit}
+.rm-url:read-only{opacity:0.72;cursor:default;background:var(--bg-surface);border-color:var(--border)}
+.rm-status{font-size:10px;padding:4px 10px;border-radius:12px;font-weight:500;white-space:nowrap}
+.rm-status.online{color:var(--green);background:var(--green-dim)}
+.rm-status.offline{color:var(--red);background:var(--red-dim)}
+.rm-frame-wrap{flex:1;position:relative;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;min-height:640px;box-shadow:var(--shadow-sm)}
+.rm-frame{width:100%;height:100%;min-height:640px;border:none;display:block;background:var(--bg-base)}
+.rm-offline{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:32px;background:var(--bg-surface)}
+.rm-offline.show{display:flex}
+.rm-offline-card{max-width:480px;text-align:center}
+.rm-offline-card h3{font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:8px}
+.rm-offline-card p{font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px}
+.rm-code{display:block;text-align:left;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:11px;color:var(--text-secondary);margin-bottom:16px;white-space:pre-wrap}
+.rm-pick{min-width:180px;padding:8px 10px;font-size:11px}
+.rm-setup{display:none;margin-bottom:4px;padding:16px 18px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm)}
+.rm-setup.show{display:block}
+.rm-setup h4{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.rm-setup>p{font-size:11px;color:var(--text-secondary);line-height:1.55;margin-bottom:14px}
+.rm-steps{display:flex;flex-direction:column;gap:0}
+.rm-step{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.rm-step:last-child{border-bottom:none;padding-bottom:0}
+.rm-step-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.rm-step-body{flex:1;min-width:0}
+.rm-step-body strong{display:block;font-size:11px;color:var(--text-primary);margin-bottom:4px}
+.rm-step-body p{font-size:10px;color:var(--text-muted);line-height:1.5;margin:0}
+.rm-cmd-row{display:flex;gap:8px;align-items:stretch;margin-top:8px;flex-wrap:wrap}
+.rm-cmd{flex:1;min-width:200px;padding:8px 12px;font-size:10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-secondary);font-family:'JetBrains Mono',monospace}
+.rm-setup-links{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:10px}
+.rm-setup-links a{color:var(--accent);text-decoration:none}
+.rm-setup-links a:hover{text-decoration:underline}
+.rm-platforms{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+@media(max-width:700px){.rm-platforms{grid-template-columns:1fr}}
+.rm-platform{padding:10px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);font-size:10px;line-height:1.5;color:var(--text-secondary)}
+.rm-platform strong{display:block;font-size:10px;color:var(--text-primary);margin-bottom:4px}
+.rm-theater{position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;background:var(--bg-base)}
+.rm-theater.show{display:flex}
+.rm-theater-bar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--accent);border-bottom:none;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,0.15)}
+.rm-theater-bar .btn{background:#fff;color:var(--accent);border-color:#fff;font-weight:700}
+.rm-theater-bar .btn-ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5)}
+.rm-theater-bar .btn-ghost:hover{background:rgba(255,255,255,0.15);color:#fff}
+.rm-theater-title{font-size:12px;font-weight:600;color:rgba(255,255,255,0.9);flex:1}
+.rm-theater-body{flex:1;position:relative;min-height:0}
+.rm-theater-body .rm-frame{min-height:100%!important;height:100%}
+@media(max-width:900px){.rm-wrap{min-height:calc(100vh - 180px)}.rm-frame,.rm-frame-wrap{min-height:520px}}
+
+/* ══════════════════════════════════════════════
    MODAL
    ══════════════════════════════════════════════ */
 .modal-backdrop{position:fixed;inset:0;z-index:999;display:none;align-items:center;justify-content:center;padding:16px}
@@ -574,21 +635,28 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 /* ═══════════════════════════════════════════════════
    AUTH
    ═══════════════════════════════════════════════════ */
-.auth-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:var(--bg-base)}
-[data-theme="light"] .auth-overlay{background:linear-gradient(160deg,#eef2f8 0%,var(--bg-base) 55%)}
+html.auth-open{overflow:hidden;overscroll-behavior:none;height:100%}
+html.auth-open body{overflow:hidden;overscroll-behavior:none}
+.auth-overlay{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:var(--bg-base)}
+html.auth-open .auth-overlay{display:flex}
+[data-theme="light"] .auth-overlay{background:radial-gradient(ellipse at 50% 15%,rgba(0,102,204,0.09) 0%,#ececee 45%,var(--bg-base) 100%)}
 [data-theme="dark"] .auth-overlay{background:radial-gradient(ellipse at 50% 15%,rgba(79,142,247,0.09) 0%,#0d1018 45%,var(--bg-base) 100%)}
-.auth-card{position:relative;width:400px;max-width:92vw;padding:36px 32px 28px;text-align:center;border-radius:var(--radius-xl);background:var(--bg-surface);border:1px solid var(--border-medium);box-shadow:var(--shadow-lg)}
+.auth-card{position:relative;width:400px;max-width:92vw;padding:36px 32px 28px;text-align:center;border-radius:var(--radius-xl);background:var(--bg-surface);border:1px solid var(--border-medium);box-shadow:var(--shadow-lg);flex-shrink:0;margin:auto}
 .auth-card.glass{background:var(--bg-surface);backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid var(--border-medium)}
 [data-theme="dark"] .auth-card{background:#181c2a;border-color:rgba(255,255,255,0.14);box-shadow:0 24px 64px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.05)}
 .auth-logo{margin-bottom:24px}
 .auth-logo h1{font-size:22px;font-weight:700;color:var(--text-primary);margin:8px 0 4px}
 .auth-subtitle{color:var(--text-secondary);font-size:13px}
-.auth-tabs{display:flex;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:22px;gap:4px}
+.auth-tabs{position:relative;display:grid;grid-template-columns:1fr 1fr;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:22px;gap:4px;isolation:isolate}
 [data-theme="dark"] .auth-tabs{background:#12151f;border-color:rgba(255,255,255,0.1)}
-.auth-tab{flex:1;padding:9px 8px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:var(--transition)}
-.auth-tab.active{background:var(--bg-surface);color:var(--text-primary);box-shadow:var(--shadow-sm);border:1px solid var(--border-medium)}
+.auth-tab-indicator{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 6px);border-radius:6px;background:var(--bg-surface);border:1px solid var(--border-medium);box-shadow:var(--shadow-sm);transition:transform var(--transition-smooth);pointer-events:none;z-index:0;will-change:transform}
+.auth-tabs[data-mode="signup"] .auth-tab-indicator{transform:translateX(calc(100% + 4px))}
+[data-theme="dark"] .auth-tab-indicator{background:#222736;border-color:rgba(255,255,255,0.12)}
+.auth-tab{position:relative;z-index:1;padding:9px 8px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:color var(--transition-smooth)}
+.auth-tab.active{color:var(--text-primary)}
 [data-theme="dark"] .auth-tab{color:#8b92ab}
-[data-theme="dark"] .auth-tab.active{background:#222736;color:#eef1f8;border-color:rgba(255,255,255,0.12)}
+[data-theme="dark"] .auth-tab.active{color:#eef1f8}
+.auth-forms{position:relative;min-height:220px}
 .auth-form{display:flex;flex-direction:column;gap:14px;text-align:left}
 .auth-form>div{display:flex;flex-direction:column;gap:6px}
 .auth-label{font-size:11px;font-weight:600;color:var(--text-secondary);letter-spacing:0.03em;text-transform:uppercase}
@@ -706,6 +774,10 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
         <button class="view-btn" data-view="analytics" onclick="switchView('analytics')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
           <span>Stats</span>
+        </button>
+        <button class="view-btn" data-view="resume" onclick="switchView('resume')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Resume</span>
         </button>
       </div>
       <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
@@ -905,6 +977,82 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
       </div>
     </div>
 
+    <!-- RESUME VIEW — embedded Resume Matcher (https://github.com/srbhr/resume-matcher) -->
+    <div class="view-panel" id="viewResume" style="display:none">
+      <div class="rm-wrap">
+        <div class="rm-toolbar">
+          <span class="rm-toolbar-title">Resume Matcher</span>
+          <input class="rm-url" id="rmUrl" type="url" placeholder="paste URL from Terminal" title="Resume Matcher URL" oninput="onRmUrlEdit()" onchange="saveRmUrl()" onblur="saveRmUrl()">
+          <button class="btn btn-primary btn-sm" id="rmConnectBtn" onmousedown="rmKeepFocus(event)" onclick="connectRm()">Connect</button>
+          <button class="btn btn-secondary btn-sm" id="rmEditBtn" style="display:none" onmousedown="rmKeepFocus(event)" onclick="editRmUrl()">Edit</button>
+          <span class="rm-status offline" id="rmStatus">Not connected</span>
+          <select class="rm-pick" id="rmFromApp" title="Pipeline application">
+            <option value="">— Pick application —</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="rmPushBtn" onmousedown="rmKeepFocus(event)" onclick="pushJobToMatcher()">Send job → Matcher</button>
+          <button class="btn btn-secondary btn-sm" onmousedown="rmKeepFocus(event)" onclick="openRmPage('/tailor')">Tailor</button>
+          <button class="btn btn-secondary btn-sm" onmousedown="rmKeepFocus(event)" onclick="openRmPage('/settings')">Settings</button>
+          <button class="btn btn-secondary btn-sm" id="rmExpandBtn" onmousedown="rmKeepFocus(event)" onclick="toggleRmTheater()" title="Larger view inside Pipeline">Expand</button>
+          <button class="btn btn-ghost btn-sm" onmousedown="rmKeepFocus(event)" onclick="openRmNewTab()" title="Opens a separate browser tab">New tab</button>
+          <button class="btn btn-secondary btn-sm" onmousedown="rmKeepFocus(event)" onclick="toggleRmSetup()">Setup help</button>
+        </div>
+        <div class="rm-setup" id="rmSetup">
+          <h4>Setup Resume Matcher (3 steps)</h4>
+          <p>Runs on your computer only. This page stays your job tracker — Docker runs the resume tool locally.</p>
+          <div class="rm-steps">
+            <div class="rm-step">
+              <span class="rm-step-num">1</span>
+              <div class="rm-step-body">
+                <strong>Install Docker Desktop</strong>
+                <p>Install, open it, wait until it says <em>Running</em>.</p>
+                <div class="rm-setup-links">
+                  <a href="https://www.docker.com/products/docker-desktop/" target="_blank" rel="noopener">Download Docker Desktop</a>
+                </div>
+              </div>
+            </div>
+            <div class="rm-step">
+              <span class="rm-step-num">2</span>
+              <div class="rm-step-body">
+                <strong>Copy the setup command</strong>
+                <p>No file download — avoids browsers renaming to <code style="font-size:10px">.txt</code>. Pick your OS, copy, then paste in Terminal.</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                  <button class="btn btn-primary btn-sm" onclick="setRmSetupOs('mac')">Mac / Linux</button>
+                  <button class="btn btn-primary btn-sm" onclick="setRmSetupOs('win')">Windows</button>
+                  <button class="btn btn-secondary btn-sm" onclick="copyRmSetupCmd()">Copy command</button>
+                </div>
+              </div>
+            </div>
+            <div class="rm-step">
+              <span class="rm-step-num">3</span>
+              <div class="rm-step-body">
+                <strong>Run it</strong>
+                <p id="rmRunHint">Open Terminal, paste the copied command, press Enter. First run ~2 min.</p>
+                <div class="rm-cmd-row">
+                  <code class="rm-cmd" id="rmSetupCmd">mkdir -p ~/resume-matcher && cd ~/resume-matcher && …</code>
+                  <button class="btn btn-secondary btn-sm" onclick="copyRmSetupCmd()">Copy</button>
+                </div>
+                <p style="margin-top:8px;margin-bottom:0">Copy the <code style="font-size:10px">http://localhost:…</code> line from Terminal and paste it in the URL field above.</p>
+                <p style="margin-top:10px;margin-bottom:0;font-size:10px;color:var(--text-muted)">Prefer a file? <a href="#" onclick="downloadRmStarter();return false">Download zip</a> (correct name inside). Browsers often save scripts as <code style="font-size:10px">.sh.txt</code> — that breaks <code style="font-size:10px">docker compose up -d</code>; use copy-paste instead.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="rm-frame-wrap" id="rmFrameWrap">
+          <iframe class="rm-frame" id="rmFrame" title="Resume Matcher" src="about:blank"></iframe>
+          <div class="rm-offline" id="rmOffline">
+            <div class="rm-offline-card">
+              <h3 id="rmOfflineTitle">Resume Matcher is not connected</h3>
+              <p id="rmOfflineMsg">Follow <strong>Setup help</strong>, run the command in Terminal, then paste the <code style="font-size:10px">http://localhost:…</code> URL it prints into the field above.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                <button class="btn btn-primary btn-sm" onmousedown="rmKeepFocus(event)" onclick="connectRm()">Connect</button>
+                <button class="btn btn-secondary btn-sm" onmousedown="rmKeepFocus(event)" onclick="copyRmFixCors()">Copy CORS fix</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </main>
 
@@ -1001,53 +1149,17 @@ td{padding:14px 16px;font-size:12px;vertical-align:middle}
 </div>
 
 <!-- ═══ TOASTS ═══ -->
-<div class="toast-container" id="toastContainer"></div>
-
-<!-- ═══ AUTH OVERLAY ═══ -->
-<div class="auth-overlay" id="authOverlay">
-  <div class="auth-card glass">
-    <button class="auth-theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-      <span class="icon-sun">☀️</span>
-      <span class="icon-moon">🌙</span>
-    </button>
-    <div class="auth-logo">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 12l2 2 4-4"/></svg>
-      <h1>Pipeline</h1>
-      <p class="auth-subtitle">Job Application Tracker</p>
-    </div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="authTabSignIn" onclick="showAuthForm('signin')">Sign In</button>
-      <button class="auth-tab" id="authTabSignUp" onclick="showAuthForm('signup')">Sign Up</button>
-    </div>
-    <div id="authFormSignIn" class="auth-form">
-      <div>
-        <label class="auth-label" for="authEmail">Email</label>
-        <input type="email" class="auth-input" id="authEmail" placeholder="you@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')signIn()">
-      </div>
-      <div>
-        <label class="auth-label" for="authPassword">Password</label>
-        <input type="password" class="auth-input" id="authPassword" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
-      </div>
-      <button class="btn btn-primary auth-btn" onclick="signIn()">Sign In</button>
-    </div>
-    <div id="authFormSignUp" class="auth-form" style="display:none">
-      <div>
-        <label class="auth-label" for="authEmailUp">Email</label>
-        <input type="email" class="auth-input" id="authEmailUp" placeholder="you@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')signUp()">
-      </div>
-      <div>
-        <label class="auth-label" for="authPasswordUp">Password</label>
-        <input type="password" class="auth-input" id="authPasswordUp" placeholder="Min 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')signUp()">
-      </div>
-      <button class="btn btn-primary auth-btn" onclick="signUp()">Sign Up</button>
-    </div>
-    <div class="auth-error" id="authError"></div>
-    <div class="auth-loading" id="authLoading" style="display:none">
-      <div class="spinner"></div>
-      <span>Loading your data…</span>
-    </div>
+<!-- Resume Matcher expanded overlay — on body so Unexpand bar is always visible -->
+<div class="rm-theater" id="rmTheater">
+  <div class="rm-theater-bar">
+    <button class="btn btn-secondary btn-sm" onclick="closeRmTheater()">← Unexpand</button>
+    <span class="rm-theater-title">Back to Pipeline · Esc</span>
+    <button class="btn btn-ghost btn-sm" onmousedown="rmKeepFocus(event)" onclick="openRmNewTab()">New tab</button>
   </div>
+  <div class="rm-theater-body" id="rmTheaterSlot"></div>
 </div>
+
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1128,7 +1240,7 @@ async function checkAuth(){
   const token=localStorage.getItem('pipeline_token');
   const refresh=localStorage.getItem('pipeline_refresh_token');
   if(!token&&!refresh){showAuthUI();return}
-  document.getElementById('authOverlay').style.display='none';
+  setAuthOverlayVisible(false);
   if(token)sbAccessToken=token;
   try{
     await refreshSessionIfNeeded();
@@ -1179,12 +1291,28 @@ async function signIn(){
 async function signOut(){
   try{await fetch(SB_URL+'/auth/v1/logout',{method:'POST',headers:sbHeaders()})}catch{}
   clearSession();entries=[];
-  document.getElementById('authOverlay').style.display='flex';document.getElementById('authBar').style.display='none';
-  document.querySelectorAll('.auth-form input').forEach(i=>i.value='');document.getElementById('authError').textContent='';
+  setAuthOverlayVisible(true);document.getElementById('authBar').style.display='none';
+  showAuthForm('signin');
+  document.querySelectorAll('.auth-form input').forEach(i=>i.value='');
 }
 
-function showAuthUI(){document.getElementById('authOverlay').style.display='flex';document.getElementById('authBar').style.display='none'}
+let _authScrollY=0,_authTouchBlock=null;
+function setAuthOverlayVisible(visible){
+  document.documentElement.classList.toggle('auth-open',visible);
+  if(visible){
+    _authScrollY=window.scrollY;
+    lockBodyScroll();
+    _authTouchBlock=(e)=>{if(!e.target.closest('#authOverlay'))e.preventDefault()};
+    document.addEventListener('touchmove',_authTouchBlock,{passive:false});
+  }else{
+    if(_authTouchBlock){document.removeEventListener('touchmove',_authTouchBlock);_authTouchBlock=null}
+    unlockBodyScroll();
+    window.scrollTo(0,_authScrollY);
+  }
+}
+function showAuthUI(){setAuthOverlayVisible(true);document.getElementById('authBar').style.display='none'}
 function showAuthForm(mode){
+  document.getElementById('authTabs').dataset.mode=mode;
   document.getElementById('authTabSignIn').classList.toggle('active',mode==='signin');
   document.getElementById('authTabSignUp').classList.toggle('active',mode==='signup');
   document.getElementById('authFormSignIn').style.display=mode==='signin'?'flex':'none';
@@ -1194,7 +1322,7 @@ function showAuthForm(mode){
 function showAuthLoading(v){document.getElementById('authLoading').style.display=v?'flex':'none';document.querySelectorAll('.auth-form,.auth-btn,.auth-tabs,.auth-logo').forEach(e=>e.style.opacity=v?'0.4':'1')}
 function setAuthError(msg){document.getElementById('authError').textContent=msg}
 function getCurrentUserId(){return currentUser?.id||null}
-function onAuthSuccess(email){document.getElementById('authOverlay').style.display='none';document.getElementById('authBar').style.display='flex';const el=document.getElementById('authUserEmail');el.textContent=email;el.title=email;loadEntries()}
+function onAuthSuccess(email){setAuthOverlayVisible(false);document.getElementById('authBar').style.display='flex';const el=document.getElementById('authUserEmail');el.textContent=email;el.title=email;loadEntries()}
 
 // ── CRUD ──
 async function loadEntries(){
@@ -1676,6 +1804,408 @@ function renderAnalytics(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// RESUME MATCHER — embedded app (https://github.com/srbhr/resume-matcher)
+// ══════════════════════════════════════════════════════════════════════════════
+const RM_URL_KEY='pipeline_rm_url';
+const RM_STATE_KEY='pipeline_rm_state';
+const RM_PORT=18765;
+let rmOnline=false;
+let rmStatusDetail='';
+let rmConnectedUrl=null;
+let rmEverChecked=false;
+let rmHealthPending=null;
+function normalizeRmUrl(raw){
+  const s=(raw||'').trim().replace(/\/+$/,'');
+  if(!s)return '';
+  if(/^https?:\/\//i.test(s))return s;
+  return 'http://'+s;
+}
+function getRmUrl(){
+  try{return normalizeRmUrl(localStorage.getItem(RM_URL_KEY)||'')}catch{return ''}
+}
+function persistRmState(){
+  try{sessionStorage.setItem(RM_STATE_KEY,JSON.stringify({online:rmOnline,detail:rmStatusDetail,url:rmConnectedUrl}))}catch{}
+}
+function restoreRmState(){
+  try{
+    const s=JSON.parse(sessionStorage.getItem(RM_STATE_KEY)||'null');
+    if(!s||!s.online||!rmUrlsMatch(s.url,getRmUrl()))return false;
+    rmOnline=true;rmStatusDetail=s.detail||'Online';rmConnectedUrl=s.url;rmEverChecked=true;
+    return true;
+  }catch{return false}
+}
+function rmInputUrl(){
+  const el=document.getElementById('rmUrl');
+  const raw=el&&(el.value!==undefined)?el.value:(localStorage.getItem(RM_URL_KEY)||'');
+  return normalizeRmUrl(raw);
+}
+function rmUrlsMatch(a,b){
+  if(!a||!b)return false;
+  const u=normalizeRmUrl(a),v=normalizeRmUrl(b);
+  if(u===v)return true;
+  const U=new Set(rmUrlVariants(u)),V=new Set(rmUrlVariants(v));
+  for(const x of U)if(V.has(x))return true;
+  return false;
+}
+function isRmConnectedAt(url){
+  return rmOnline&&!!rmConnectedUrl&&rmUrlsMatch(url,rmConnectedUrl);
+}
+function onRmUrlEdit(){
+  const url=rmInputUrl();
+  if(isRmConnectedAt(url))return;
+  rmOnline=false;
+  const el=document.getElementById('rmStatus'),off=document.getElementById('rmOffline');
+  if(el){el.className='rm-status offline';el.textContent='Not connected'}
+  if(off)off.classList.add('show');
+  persistRmState();
+}
+function rmKeepFocus(e){e.preventDefault()}
+function saveRmUrl(){
+  const el=document.getElementById('rmUrl');if(!el)return;
+  const url=normalizeRmUrl(el.value);
+  el.value=url;
+  if(!rmUrlsMatch(url,rmConnectedUrl||'')){rmOnline=false;rmConnectedUrl=null;try{sessionStorage.removeItem(RM_STATE_KEY)}catch{};setRmStatus(false,'Not connected')}
+  if(url)localStorage.setItem(RM_URL_KEY,url);else localStorage.removeItem(RM_URL_KEY);
+}
+async function connectRm(){
+  const url=rmInputUrl();
+  if(!url)return toast('Paste the URL from Terminal first','error');
+  saveRmUrl();
+  const ok=await checkRmHealth(true);
+  if(!ok)toast('Connection failed — check URL and Docker','error');
+}
+function updateRmUrlFieldState(connected){
+  const urlEl=document.getElementById('rmUrl'),connectBtn=document.getElementById('rmConnectBtn'),editBtn=document.getElementById('rmEditBtn');
+  if(urlEl)urlEl.readOnly=!!connected;
+  if(connectBtn)connectBtn.style.display=connected?'none':'';
+  if(editBtn)editBtn.style.display=connected?'':'none';
+}
+function editRmUrl(){
+  rmOnline=false;rmConnectedUrl=null;
+  try{sessionStorage.removeItem(RM_STATE_KEY)}catch{}
+  const frame=document.getElementById('rmFrame');if(frame)frame.src='about:blank';
+  setRmStatus(false,'Not connected');
+  updateRmUrlFieldState(false);
+  const el=document.getElementById('rmUrl');if(el){el.readOnly=false;el.focus();el.select()}
+}
+function setRmStatus(online,detail,atUrl){
+  rmOnline=online;
+  if(detail)rmStatusDetail=detail;
+  if(online){
+    const input=rmInputUrl();
+    const hit=normalizeRmUrl(atUrl||input);
+    rmConnectedUrl=rmUrlsMatch(input,hit)?input:hit;
+  }
+  persistRmState();
+  const el=document.getElementById('rmStatus'),off=document.getElementById('rmOffline'),setup=document.getElementById('rmSetup');
+  if(!el)return;
+  el.className='rm-status '+(online?'online':'offline');
+  el.textContent=detail||(online?'Online':'Offline');
+  const checking=detail==='Checking…';
+  if(off)off.classList.toggle('show',!online&&!checking);
+  if(setup){
+    if(online){setup.classList.remove('show');delete setup.dataset.pinned}
+    else if(!checking)setup.classList.add('show');
+  }
+  updateRmUrlFieldState(online);
+}
+function toggleRmSetup(){
+  const el=document.getElementById('rmSetup');if(!el)return;
+  if(rmOnline)return;
+  el.classList.toggle('show');
+}
+const RM_COMPOSE_YML=`services:
+  resume-matcher:
+    image: ghcr.io/srbhr/resume-matcher:latest
+    container_name: pipeline-resume-matcher
+    ports:
+      - "18765:3000"
+    volumes:
+      - resume-matcher-data:/app/backend/data
+    environment:
+      - FRONTEND_BASE_URL=http://127.0.0.1:3000
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=["http://localhost:18765","http://127.0.0.1:18765","http://localhost:8080","http://127.0.0.1:8080","http://localhost:5500","http://127.0.0.1:5500","http://localhost:5173","http://127.0.0.1:5173"]
+    restart: unless-stopped
+
+volumes:
+  resume-matcher-data:
+`;
+const RM_FIX_CORS=`docker rm -f pipeline-resume-matcher 2>/dev/null; docker run -d --name pipeline-resume-matcher -p ${RM_PORT}:3000 -v resume-matcher-data:/app/backend/data -e FRONTEND_BASE_URL=http://127.0.0.1:3000 -e 'CORS_ORIGINS=["http://localhost:${RM_PORT}","http://127.0.0.1:${RM_PORT}","http://localhost:8080","http://127.0.0.1:8080","http://localhost:5500","http://127.0.0.1:5500","http://localhost:5173","http://127.0.0.1:5173"]' --restart unless-stopped ghcr.io/srbhr/resume-matcher:latest; echo "Set Pipeline URL to http://localhost:${RM_PORT}"`;
+let rmSetupOs=(/Win/i.test(navigator.platform)||/Windows/i.test(navigator.userAgent))?'win':'mac';
+const RM_RUN_MAC=`mkdir -p ~/resume-matcher && cd ~/resume-matcher && cat > docker-compose.yml << 'EOF'
+${RM_COMPOSE_YML}EOF
+command -v docker >/dev/null 2>&1 || { echo "Install Docker Desktop first."; exit 1; }
+docker info >/dev/null 2>&1 || { echo "Open Docker Desktop until Running, then run again."; exit 1; }
+docker rm -f pipeline-resume-matcher 2>/dev/null || true
+docker compose -f docker-compose.yml up -d
+echo "Set Pipeline URL to http://localhost:${RM_PORT}"`;
+const RM_RUN_WIN=`$dir="$env:USERPROFILE\\resume-matcher"
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+Set-Location $dir
+@'
+${RM_COMPOSE_YML}'@ | Set-Content -Encoding utf8 docker-compose.yml
+docker info *> $null
+if (-not $?) { Write-Host "Open Docker Desktop first."; exit 1 }
+docker rm -f pipeline-resume-matcher 2>$null
+docker compose -f docker-compose.yml up -d
+Write-Host "Set Pipeline URL to http://localhost:${RM_PORT}"`;
+const RM_RUN_PREVIEW={mac:'mkdir -p ~/resume-matcher && cd ~/resume-matcher && …',win:'$dir=$env:USERPROFILE\\resume-matcher … (multi-line — click Copy)'};
+const RM_START_SH=`#!/usr/bin/env bash
+set -euo pipefail
+cd ~/resume-matcher
+mkdir -p "$PWD"
+cat > docker-compose.yml << 'EOF'
+${RM_COMPOSE_YML}EOF
+command -v docker >/dev/null 2>&1 || { echo "Install Docker Desktop first."; exit 1; }
+docker info >/dev/null 2>&1 || { echo "Open Docker Desktop until Running, then run again."; exit 1; }
+docker rm -f pipeline-resume-matcher 2>/dev/null || true
+docker compose -f docker-compose.yml up -d
+echo "Set Pipeline URL to http://localhost:${RM_PORT}"
+`;
+const RM_START_BAT=`@echo off
+cd /d "%USERPROFILE%\\resume-matcher"
+if not exist "%USERPROFILE%\\resume-matcher" mkdir "%USERPROFILE%\\resume-matcher"
+(
+echo services:
+echo   resume-matcher:
+echo     image: ghcr.io/srbhr/resume-matcher:latest
+echo     container_name: pipeline-resume-matcher
+echo     ports:
+echo       - "18765:3000"
+echo     volumes:
+echo       - resume-matcher-data:/app/backend/data
+echo     environment:
+echo       - FRONTEND_BASE_URL=http://127.0.0.1:3000
+echo       - LOG_LEVEL=INFO
+echo     restart: unless-stopped
+echo volumes:
+echo   resume-matcher-data:
+) > docker-compose.yml
+docker info >nul 2>&1 || (echo Open Docker Desktop first. & pause & exit /b 1)
+docker rm -f pipeline-resume-matcher 2>nul
+docker compose -f docker-compose.yml up -d
+echo Set Pipeline URL to http://localhost:18765
+pause
+`;
+function rmSetupFullCmd(){return rmSetupOs==='win'?RM_RUN_WIN:RM_RUN_MAC;}
+function setRmSetupOs(os){
+  rmSetupOs=os;
+  const cmd=document.getElementById('rmSetupCmd');
+  const hint=document.getElementById('rmRunHint');
+  if(cmd)cmd.textContent=RM_RUN_PREVIEW[os];
+  if(hint)hint.textContent=os==='win'?'Open PowerShell or Terminal, paste the copied command, press Enter. First run ~2 min.':'Open Terminal, paste the copied command, press Enter. First run ~2 min.';
+}
+function crc32Buf(buf){
+  let c=0xffffffff;
+  for(let i=0;i<buf.length;i++){c^=buf[i];for(let k=0;k<8;k++)c=(c>>>1)^(0xedb88320&-(c&1));}
+  return (c^0xffffffff)>>>0;
+}
+function downloadZip(zipName,entryName,content){
+  const enc=new TextEncoder(),name=enc.encode(entryName),data=enc.encode(content);
+  const crc=crc32Buf(data),size=data.length,nlen=name.length;
+  const local=new Uint8Array(30+nlen+size),dv=new DataView(local.buffer);
+  local.set([0x50,0x4b,0x03,0x04,20,0,0,0,0,0],0);
+  dv.setUint32(14,crc,true);dv.setUint32(18,size,true);dv.setUint32(22,size,true);
+  dv.setUint16(26,nlen,true);local.set(name,30);local.set(data,30+nlen);
+  const central=new Uint8Array(46+nlen),cdv=new DataView(central.buffer);
+  central.set([0x50,0x4b,0x01,0x02,20,0,20,0,0,0,0,0],0);
+  cdv.setUint32(16,crc,true);cdv.setUint32(20,size,true);cdv.setUint32(24,size,true);
+  cdv.setUint16(28,nlen,true);cdv.setUint32(42,0,true);central.set(name,46);
+  const end=new Uint8Array(22),edv=new DataView(end.buffer);
+  end.set([0x50,0x4b,0x05,0x06,0,0,0,0],0);edv.setUint16(8,1,true);edv.setUint16(10,1,true);
+  edv.setUint16(12,nlen+30,true);edv.setUint16(14,nlen+46,true);edv.setUint32(16,30+nlen+size,true);
+  const blob=new Blob([local,central,end],{type:'application/zip'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=zipName;
+  document.body.appendChild(a);a.click();a.remove();
+}
+function downloadRmStarter(){
+  const zip=rmSetupOs==='win'?'start-resume-matcher-win.zip':'start-resume-matcher-mac.zip';
+  const entry=rmSetupOs==='win'?'start-resume-matcher.bat':'start-resume-matcher.sh';
+  const body=rmSetupOs==='win'?RM_START_BAT:RM_START_SH;
+  downloadZip(zip,entry,body);
+  toast('Downloaded '+zip+' — unzip, then run the file inside','success');
+}
+async function copyRmSetupCmd(){
+  const ok=await copyText(rmSetupFullCmd());
+  toast(ok?'Copied — paste in Terminal':'Could not copy','success');
+}
+function ensureRmIframe(){
+  const frame=document.getElementById('rmFrame');if(!frame||!rmOnline)return;
+  const base=getRmUrl();
+  if(!frame.src||frame.src==='about:blank'||!frame.src.startsWith(base))loadRmIframe('/dashboard');
+}
+function loadRmIframe(path){
+  const frame=document.getElementById('rmFrame');if(!frame||!rmOnline)return;
+  const base=getRmUrl(),p=path&&path.startsWith('/')?path:'/';
+  frame.src=base+p;
+}
+async function openRmPage(path){
+  if(rmHealthPending)await rmHealthPending;
+  if(!isRmConnectedAt(rmInputUrl()))return toast('Resume Matcher is not connected at this URL','error');
+  loadRmIframe(path);
+}
+let rmTheaterFrameHost=null;
+function updateRmExpandBtn(){
+  const btn=document.getElementById('rmExpandBtn'),expanded=document.getElementById('rmTheater')?.classList.contains('show');
+  if(!btn)return;
+  btn.textContent=expanded?'Unexpand':'Expand';
+  btn.title=expanded?'Return to normal embedded view':'Larger view inside Pipeline';
+}
+function openRmTheater(){
+  if(!rmOnline)return toast('Start Resume Matcher first (docker compose up -d)','error');
+  const wrap=document.getElementById('rmFrameWrap'),theater=document.getElementById('rmTheater'),slot=document.getElementById('rmTheaterSlot'),frame=document.getElementById('rmFrame');
+  if(!wrap||!theater||!slot||!frame||theater.classList.contains('show'))return;
+  rmTheaterFrameHost=wrap;slot.appendChild(frame);theater.classList.add('show');lockBodyScroll();updateRmExpandBtn();
+  toast('Click ← Unexpand in the blue bar at top, or press Esc','info');
+}
+function closeRmTheater(){
+  const theater=document.getElementById('rmTheater'),frame=document.getElementById('rmFrame');
+  if(rmTheaterFrameHost&&frame)rmTheaterFrameHost.appendChild(frame);
+  theater?.classList.remove('show');unlockBodyScroll();updateRmExpandBtn();
+}
+function toggleRmTheater(){
+  if(document.getElementById('rmTheater')?.classList.contains('show'))closeRmTheater();
+  else openRmTheater();
+}
+function openRmNewTab(){
+  const url=rmInputUrl();
+  if(!url)return toast('Enter Resume Matcher URL first','error');
+  if(!isRmConnectedAt(url))return toast('Resume Matcher is not connected at this URL','error');
+  window.open(url,'_blank','noopener');
+  toast('Opened in a new tab — click your Pipeline browser tab to return','success');
+}
+function formatPipelineJd(e){
+  const lines=[`${e.company} — ${e.position}`];
+  if(e.website)lines.push(`Website: ${e.website}`);
+  if(e.date)lines.push(`Applied: ${e.date}`);
+  if(e.status)lines.push(`Pipeline status: ${e.status}`);
+  if(e.notes&&e.notes.trim()){lines.push('');lines.push(e.notes.trim())}
+  else{lines.push('');lines.push('(Add the full job description in application notes to sync richer context.)')}
+  return lines.join('\n');
+}
+async function copyText(text){
+  try{await navigator.clipboard.writeText(text);return true}catch{
+    const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');return true}catch{return false}finally{document.body.removeChild(ta)}
+  }
+}
+function rmUrlVariants(url){
+  const u=normalizeRmUrl(url),out=[u];
+  if(u.includes('localhost'))out.push(u.replace('localhost','127.0.0.1'));
+  else if(u.includes('127.0.0.1'))out.push(u.replace('127.0.0.1','localhost'));
+  return [...new Set(out)];
+}
+function setRmOfflineMsg(reason){
+  const title=document.getElementById('rmOfflineTitle'),msg=document.getElementById('rmOfflineMsg');
+  if(!title||!msg)return;
+  if(reason==='blocked-https'){
+    title.textContent='Browser blocked localhost';
+    msg.innerHTML='Pipeline is on <strong>https</strong> — browsers block <code style="font-size:10px">http://localhost</code>. Open Pipeline via a local server (e.g. <code style="font-size:10px">http://localhost:8080</code>).';
+  }else if(reason==='cors'){
+    title.textContent='Docker is running — browser blocked API';
+    msg.innerHTML='Click <strong>Copy CORS fix</strong> below, paste in Terminal, copy the URL it prints, paste above, then click <strong>Connect</strong>.';
+  }else if(reason==='failed'){
+    const u=esc(rmInputUrl()||'');
+    title.textContent='Connection failed';
+    msg.innerHTML=`Could not reach <code style="font-size:10px">${u}</code>. Wrong port, Docker not running, or URL typo — fix and click <strong>Connect</strong> again.`;
+  }else{
+    title.textContent='Resume Matcher is not connected';
+    msg.innerHTML='Follow <strong>Setup help</strong>, run the command in Terminal, then paste the <code style="font-size:10px">http://localhost:…</code> URL it prints into the field above.';
+  }
+}
+async function rmFetchHealth(base){
+  const r=await fetch(base+'/api/v1/health',{method:'GET',mode:'cors'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  let detail='Online';
+  try{
+    const st=await fetch(base+'/api/v1/status',{method:'GET',mode:'cors'}).then(x=>x.ok?x.json():null);
+    if(st){
+      if(!st.llm_configured)detail='Online — configure AI in Settings';
+      else if(!st.has_master_resume)detail='Online — upload master resume';
+      else detail='Online — ready';
+    }
+  }catch{}
+  return detail;
+}
+async function checkRmHealth(force,silent){
+  const run=async()=>{
+    const url=rmInputUrl();
+    const el=document.getElementById('rmUrl');if(el)el.value=url;
+    rmEverChecked=true;
+    if(!url){
+      setRmOfflineMsg('offline');
+      if(!silent)setRmStatus(false,'Enter URL');
+      return false;
+    }
+    const sameUrl=rmOnline&&rmUrlsMatch(url,rmConnectedUrl||'');
+    if(force&&!silent&&!sameUrl)setRmStatus(false,'Checking…');
+    if(location.protocol==='https:'&&/^http:\/\//i.test(url)){
+      setRmOfflineMsg('blocked-https');
+      if(!silent)setRmStatus(false,'HTTPS blocked');
+      return false;
+    }
+    for(const base of rmUrlVariants(url)){
+      try{
+        const detail=await rmFetchHealth(base);
+        setRmStatus(true,detail,base);
+        ensureRmIframe();
+        return true;
+      }catch{}
+    }
+    setRmOfflineMsg(force&&!silent?'failed':'offline');
+    if(!silent)setRmStatus(false,force?'Connection failed':'Not connected');
+    if(force&&!silent){const frame=document.getElementById('rmFrame');if(frame)frame.src='about:blank'}
+    return false;
+  };
+  const p=run();
+  rmHealthPending=p;
+  try{return await p}finally{if(rmHealthPending===p)rmHealthPending=null}
+}
+async function copyRmFixCors(){
+  const ok=await copyText(RM_FIX_CORS);
+  toast(ok?'Copied CORS fix — paste in Terminal, then Connect':'Could not copy','success');
+}
+async function pushJobToMatcher(){
+  const id=document.getElementById('rmFromApp').value;
+  if(!id)return toast('Pick a pipeline application','error');
+  const e=entries.find(x=>x.id===id);if(!e)return toast('Application not found','error');
+  if(rmHealthPending)await rmHealthPending;
+  if(!isRmConnectedAt(rmInputUrl()))return toast('Resume Matcher is not connected at this URL','error');
+  const jd=formatPipelineJd(e),btn=document.getElementById('rmPushBtn');
+  btn.disabled=true;btn.textContent='Sending…';
+  try{
+    const r=await fetch(getRmUrl()+'/api/v1/jobs/upload',{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_descriptions:[jd]})});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.detail||data.message||'Upload failed ('+r.status+')');
+    const jobId=Array.isArray(data.job_id)?data.job_id[0]:data.job_id;
+    await copyText(jd);
+    loadRmIframe('/tailor');
+    toast(`Sent to Resume Matcher${jobId?' (job '+jobId.slice(0,8)+'…)':''} — JD copied, paste in Tailor with ⌘V`,'success');
+  }catch(err){
+    const msg=err.message||'Failed to send job';
+    if(/cors|failed to fetch|network/i.test(msg))toast('Cannot reach Resume Matcher — check URL and docker compose','error');
+    else toast(msg,'error');
+  }finally{btn.disabled=false;btn.textContent='Send job → Matcher'}
+}
+function initResumeView(){
+  setRmSetupOs(rmSetupOs);
+  const url=getRmUrl();
+  document.getElementById('rmUrl').value=url;
+  const appSel=document.getElementById('rmFromApp');
+  appSel.innerHTML='<option value="">— Pick application —</option>'+
+    entries.map(e=>`<option value="${e.id}">${esc(e.company)} — ${esc(e.position)}</option>`).join('');
+  if(!url){setRmStatus(false,'Enter URL');document.getElementById('rmSetup')?.classList.add('show');return}
+  if(!rmOnline)restoreRmState();
+  if(rmOnline&&rmUrlsMatch(url,rmConnectedUrl||'')){
+    setRmStatus(true,rmStatusDetail||'Online',url);
+    ensureRmIframe();
+  }else{
+    setRmStatus(false,'Not connected');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // VIEW SWITCHING
 // ══════════════════════════════════════════════════════════════════════════════
 function switchView(view){
@@ -1686,6 +2216,8 @@ function switchView(view){
   if(o)gsap.to(o,{duration:0.12,opacity:0,display:'none',ease:'power2.in',onComplete:()=>{o.classList.remove('active','visible');if(n){n.style.display='block';n.classList.add('active');gsap.fromTo(n,{opacity:0,y:8},{opacity:1,y:0,duration:0.25,ease:'power2.out',onComplete:()=>n.classList.add('visible')})}}});
   if(view==='kanban'){if(!document.getElementById('kanbanBoard').children.length)renderKanban();renderStats()}
   if(view==='analytics'){setTimeout(renderAnalytics,200);renderStats()}
+  if(view==='resume')initResumeView();
+  else closeRmTheater();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1782,6 +2314,7 @@ const CMDK_ITEMS=[
   {id:'table',icon:'📋',title:'Table View',desc:'Switch to table view',kbd:'⌘1',action:()=>{toggleCmdk();switchView('table')}},
   {id:'kanban',icon:'📌',title:'Kanban Board',desc:'Switch to kanban board',kbd:'⌘2',action:()=>{toggleCmdk();switchView('kanban')}},
   {id:'analytics',icon:'📊',title:'Analytics',desc:'View pipeline analytics',kbd:'⌘3',action:()=>{toggleCmdk();switchView('analytics')}},
+  {id:'resume',icon:'📄',title:'Resume Matcher',desc:'Open embedded Resume Matcher app (Docker)',kbd:'⌘4',action:()=>{toggleCmdk();switchView('resume')}},
   {id:'export',icon:'📥',title:'Export CSV',desc:'Download applications as CSV',kbd:'⌘E',action:()=>{toggleCmdk();exportCSV()}},
   {id:'clear',icon:'🗑️',title:'Clear Filters',desc:'Reset all search and filters',kbd:'⌘⇧C',action:()=>{toggleCmdk();clearFilters()}},
   {id:'theme',icon:'🎨',title:'Toggle Theme',desc:'Switch between light and dark mode',kbd:'⌘⇧T',action:()=>{toggleCmdk();toggleTheme()}},
@@ -1801,12 +2334,13 @@ function clearFilters(){document.getElementById('searchInput').value='';document
 function toast(msg,t='info'){const icons={success:'✓',error:'✕',info:'ℹ'};const el=document.createElement('div');el.className=`toast ${t}`;el.innerHTML=`<span style="opacity:0.5;font-weight:700;margin-right:2px">${icons[t]}</span>${esc(msg)}`;document.getElementById('toastContainer').appendChild(el);gsap.fromTo(el,{opacity:0,x:20},{opacity:1,x:0,duration:0.2,ease:'power2.out'});setTimeout(()=>{gsap.to(el,{opacity:0,x:20,duration:0.12,ease:'power2.in',onComplete:()=>el.remove()})},2400)}
 document.addEventListener('keydown',e=>{
   const mod=e.metaKey||e.ctrlKey;
-  if(e.key==='Escape'){const m=document.getElementById('editModal');if(m.classList.contains('show'))closeModal();else if(document.getElementById('cmdkBackdrop').classList.contains('show'))toggleCmdk()}
+  if(e.key==='Escape'){const m=document.getElementById('editModal');if(m.classList.contains('show'))closeModal();else if(document.getElementById('rmTheater')?.classList.contains('show'))closeRmTheater();else if(document.getElementById('cmdkBackdrop').classList.contains('show'))toggleCmdk()}
   if(mod&&e.key==='k'){e.preventDefault();toggleCmdk()}
   if(mod&&e.key==='n'){e.preventDefault();openAddForm()}
   if(mod&&e.key==='1'){e.preventDefault();switchView('table')}
   if(mod&&e.key==='2'){e.preventDefault();switchView('kanban')}
   if(mod&&e.key==='3'){e.preventDefault();switchView('analytics')}
+  if(mod&&e.key==='4'){e.preventDefault();switchView('resume')}
   if(mod&&e.key==='e'){e.preventDefault();exportCSV()}
   if(mod&&e.shiftKey&&e.key==='C'){e.preventDefault();clearFilters()}
   if(mod&&e.shiftKey&&e.key==='T'){e.preventDefault();toggleTheme()}
@@ -1826,4 +2360,53 @@ function init(){
 init();
 </script>
 </body>
+
+<!-- Auth overlay outside body so backdrop-filter keeps working after scroll lock -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card glass">
+    <button class="auth-theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+      <span class="icon-sun">☀️</span>
+      <span class="icon-moon">🌙</span>
+    </button>
+    <div class="auth-logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 12l2 2 4-4"/></svg>
+      <h1>Pipeline</h1>
+      <p class="auth-subtitle">Job Application Tracker</p>
+    </div>
+    <div class="auth-tabs" id="authTabs" data-mode="signin">
+      <div class="auth-tab-indicator" aria-hidden="true"></div>
+      <button class="auth-tab active" id="authTabSignIn" onclick="showAuthForm('signin')">Sign In</button>
+      <button class="auth-tab" id="authTabSignUp" onclick="showAuthForm('signup')">Sign Up</button>
+    </div>
+    <div class="auth-forms">
+    <div id="authFormSignIn" class="auth-form">
+      <div>
+        <label class="auth-label" for="authEmail">Email</label>
+        <input type="email" class="auth-input" id="authEmail" placeholder="you@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')signIn()">
+      </div>
+      <div>
+        <label class="auth-label" for="authPassword">Password</label>
+        <input type="password" class="auth-input" id="authPassword" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+      </div>
+      <button class="btn btn-primary auth-btn" onclick="signIn()">Sign In</button>
+    </div>
+    <div id="authFormSignUp" class="auth-form" style="display:none">
+      <div>
+        <label class="auth-label" for="authEmailUp">Email</label>
+        <input type="email" class="auth-input" id="authEmailUp" placeholder="you@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')signUp()">
+      </div>
+      <div>
+        <label class="auth-label" for="authPasswordUp">Password</label>
+        <input type="password" class="auth-input" id="authPasswordUp" placeholder="Min 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')signUp()">
+      </div>
+      <button class="btn btn-primary auth-btn" onclick="signUp()">Sign Up</button>
+    </div>
+    </div>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-loading" id="authLoading" style="display:none">
+      <div class="spinner"></div>
+      <span>Loading your data…</span>
+    </div>
+  </div>
+</div>
 </html>
