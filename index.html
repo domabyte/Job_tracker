@@ -669,6 +669,13 @@ html.auth-open .auth-overlay{display:flex}
 [data-theme="dark"] .auth-input:hover{border-color:rgba(255,255,255,0.22)}
 .auth-input:focus{border-color:var(--accent);background:var(--bg-surface);box-shadow:0 0 0 3px var(--accent-glow)}
 [data-theme="dark"] .auth-input:focus{background:#141824}
+.pw-wrap{position:relative;display:flex;align-items:center}
+.pw-wrap .auth-input{padding-right:40px}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:color .15s}
+.pw-toggle:hover{color:var(--text-primary)}
+.auth-forgot{text-align:right;margin-top:-6px}
+.auth-forgot a{font-size:11px;color:var(--accent);text-decoration:none;cursor:pointer}
+.auth-forgot a:hover{text-decoration:underline}
 .auth-btn{width:100%;margin-top:6px;justify-content:center;padding:11px 18px;font-size:13px}
 .auth-error{font-size:12px;color:var(--red);margin-top:10px;min-height:18px;text-align:center}
 .auth-loading{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;color:var(--text-secondary);font-size:13px}
@@ -1267,6 +1274,24 @@ async function checkAuth(){
     }
     clearSession();showAuthUI();
   }
+}
+
+function togglePw(id,btn){
+  const inp=document.getElementById(id);
+  if(!inp)return;
+  const isPassword=inp.type==='password';
+  inp.type=isPassword?'text':'password';
+  btn.textContent=isPassword?'🙈':'👁️';
+}
+async function resetPassword(){
+  const email=(document.getElementById('authEmail').value||document.getElementById('authEmailUp').value||'').trim();
+  if(!email)return setAuthError('Enter your email first');
+  showAuthLoading(true);setAuthError('');
+  try{
+    const r=await fetch(SB_URL+'/auth/v1/recover',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email})});
+    if(!r.ok){const d=await r.json();throw new Error(d.msg||d.message||'Reset failed')}
+    showAuthLoading(false);setAuthError('Check your email for reset link ✓');
+  }catch(e){showAuthLoading(false);setAuthError(e.message)}
 }
 
 async function signUp(){
@@ -2394,7 +2419,11 @@ init();
       </div>
       <div>
         <label class="auth-label" for="authPassword">Password</label>
-        <input type="password" class="auth-input" id="authPassword" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+        <div class="pw-wrap">
+          <input type="password" class="auth-input" id="authPassword" placeholder="Your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+          <button class="pw-toggle" type="button" onclick="togglePw('authPassword',this)" tabindex="-1" aria-label="Toggle password visibility">👁️</button>
+        </div>
+        <div class="auth-forgot"><a onclick="resetPassword()">Forgot password?</a></div>
       </div>
       <button class="btn btn-primary auth-btn" onclick="signIn()">Sign In</button>
     </div>
@@ -2405,7 +2434,10 @@ init();
       </div>
       <div>
         <label class="auth-label" for="authPasswordUp">Password</label>
-        <input type="password" class="auth-input" id="authPasswordUp" placeholder="Min 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')signUp()">
+        <div class="pw-wrap">
+          <input type="password" class="auth-input" id="authPasswordUp" placeholder="Min 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')signUp()">
+          <button class="pw-toggle" type="button" onclick="togglePw('authPasswordUp',this)" tabindex="-1" aria-label="Toggle password visibility">👁️</button>
+        </div>
       </div>
       <button class="btn btn-primary auth-btn" onclick="signUp()">Sign Up</button>
     </div>
