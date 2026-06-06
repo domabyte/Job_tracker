@@ -1288,7 +1288,7 @@ async function resetPassword(){
   if(!email)return setAuthError('Enter your email first');
   showAuthLoading(true);setAuthError('');
   try{
-    const r=await fetch(SB_URL+'/auth/v1/recover',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const r=await fetch(SB_URL+'/auth/v1/recover',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,redirect_to:'https://domabyte.github.io/Job_tracker/'})});
     if(!r.ok){const d=await r.json();throw new Error(d.msg||d.message||'Reset failed')}
     showAuthLoading(false);setAuthError('Check your email for reset link ✓');
   }catch(e){showAuthLoading(false);setAuthError(e.message)}
