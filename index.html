@@ -1034,7 +1034,7 @@ html.auth-open .auth-overlay{display:flex}
               <span class="rm-step-num">2</span>
               <div class="rm-step-body">
                 <strong>Copy the setup command</strong>
-                <p>No file download — avoids browsers renaming to <code style="font-size:10px">.txt</code>. Pick your OS, copy, then paste in Terminal.</p>
+                <p>One line — hosted on GitHub, always latest. Pick your OS, copy, paste in Terminal.</p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
                   <button class="btn btn-primary btn-sm" onclick="setRmSetupOs('mac')">Mac / Linux</button>
                   <button class="btn btn-primary btn-sm" onclick="setRmSetupOs('win')">Windows</button>
@@ -1048,7 +1048,7 @@ html.auth-open .auth-overlay{display:flex}
                 <strong>Run it</strong>
                 <p id="rmRunHint">Open Terminal, paste the copied command, press Enter. First run ~2 min.</p>
                 <div class="rm-cmd-row">
-                  <code class="rm-cmd" id="rmSetupCmd">mkdir -p ~/resume-matcher && cd ~/resume-matcher && …</code>
+                  <code class="rm-cmd" id="rmSetupCmd">curl -fsSL …/install-resume-matcher.sh | bash</code>
                   <button class="btn btn-secondary btn-sm" onclick="copyRmSetupCmd()">Copy</button>
                 </div>
                 <p style="margin-top:8px;margin-bottom:0">Copy the <code style="font-size:10px">http://localhost:…</code> line from Terminal and paste it in the URL field above.</p>
@@ -1985,64 +1985,15 @@ volumes:
 `;
 const RM_FIX_CORS=`docker rm -f pipeline-resume-matcher 2>/dev/null; docker run -d --name pipeline-resume-matcher -p ${RM_PORT}:3000 -v resume-matcher-data:/app/backend/data -e FRONTEND_BASE_URL=http://127.0.0.1:3000 -e 'CORS_ORIGINS=["http://localhost:${RM_PORT}","http://127.0.0.1:${RM_PORT}","http://localhost:8080","http://127.0.0.1:8080","http://localhost:5500","http://127.0.0.1:5500","http://localhost:5173","http://127.0.0.1:5173","https://domabyte.github.io"]' --restart unless-stopped ghcr.io/srbhr/resume-matcher:latest; echo "Set Pipeline URL to http://localhost:${RM_PORT}"`;
 let rmSetupOs=(/Win/i.test(navigator.platform)||/Windows/i.test(navigator.userAgent))?'win':'mac';
-const RM_RUN_MAC=`mkdir -p ~/resume-matcher && cd ~/resume-matcher
-# Write docker-compose.yml (overwrites existing — ensures latest CORS config)
-cat > docker-compose.yml << 'EOF'
-${RM_COMPOSE_YML}EOF
-command -v docker >/dev/null 2>&1 || { echo "Install Docker Desktop first."; exit 1; }
-docker info >/dev/null 2>&1 || { echo "Open Docker Desktop until Running, then run again."; exit 1; }
-# Remove old container if exists (silent)
-docker rm -f pipeline-resume-matcher 2>/dev/null || true
-docker compose -f docker-compose.yml up -d
-echo ""
-echo "Pipeline URL: http://localhost:${RM_PORT}"
-echo "Need Chrome flag? → chrome://flags/#unsafely-treat-insecure-origin-as-secure"`;
-const RM_RUN_WIN=`$dir="$env:USERPROFILE\\resume-matcher"
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
-Set-Location $dir
-@'
-${RM_COMPOSE_YML}'@ | Set-Content -Encoding utf8 docker-compose.yml
-docker info *> $null
-if (-not $?) { Write-Host "Open Docker Desktop first."; exit 1 }
-docker rm -f pipeline-resume-matcher 2>$null
-docker compose -f docker-compose.yml up -d
-Write-Host "Set Pipeline URL to http://localhost:${RM_PORT}"`;
-const RM_RUN_PREVIEW={mac:'mkdir -p ~/resume-matcher && cd ~/resume-matcher && …',win:'$dir=$env:USERPROFILE\\resume-matcher … (multi-line — click Copy)'};
+const RM_INSTALL_RAW='https://raw.githubusercontent.com/domabyte/Job_tracker/main/scripts';
+const RM_RUN_MAC=`curl -fsSL ${RM_INSTALL_RAW}/install-resume-matcher.sh | bash`;
+const RM_RUN_WIN=`irm ${RM_INSTALL_RAW}/install-resume-matcher.ps1 | iex`;
 const RM_START_SH=`#!/usr/bin/env bash
-set -euo pipefail
-cd ~/resume-matcher
-mkdir -p "$PWD"
-cat > docker-compose.yml << 'EOF'
-${RM_COMPOSE_YML}EOF
-command -v docker >/dev/null 2>&1 || { echo "Install Docker Desktop first."; exit 1; }
-docker info >/dev/null 2>&1 || { echo "Open Docker Desktop until Running, then run again."; exit 1; }
-docker rm -f pipeline-resume-matcher 2>/dev/null || true
-docker compose -f docker-compose.yml up -d
-echo "Set Pipeline URL to http://localhost:${RM_PORT}"
+curl -fsSL ${RM_INSTALL_RAW}/install-resume-matcher.sh | bash
 `;
 const RM_START_BAT=`@echo off
-cd /d "%USERPROFILE%\\resume-matcher"
-if not exist "%USERPROFILE%\\resume-matcher" mkdir "%USERPROFILE%\\resume-matcher"
-(
-echo services:
-echo   resume-matcher:
-echo     image: ghcr.io/srbhr/resume-matcher:latest
-echo     container_name: pipeline-resume-matcher
-echo     ports:
-echo       - "18765:3000"
-echo     volumes:
-echo       - resume-matcher-data:/app/backend/data
-echo     environment:
-echo       - FRONTEND_BASE_URL=http://127.0.0.1:3000
-echo       - LOG_LEVEL=INFO
-echo     restart: unless-stopped
-echo volumes:
-echo   resume-matcher-data:
-) > docker-compose.yml
-docker info >nul 2>&1 || (echo Open Docker Desktop first. & pause & exit /b 1)
-docker rm -f pipeline-resume-matcher 2>nul
-docker compose -f docker-compose.yml up -d
-echo Set Pipeline URL to http://localhost:18765
+curl -fsSL ${RM_INSTALL_RAW}/install-resume-matcher.sh | bash
+if errorlevel 1 powershell -NoProfile -ExecutionPolicy Bypass -Command "irm ${RM_INSTALL_RAW}/install-resume-matcher.ps1 | iex"
 pause
 `;
 function rmSetupFullCmd(){return rmSetupOs==='win'?RM_RUN_WIN:RM_RUN_MAC;}
@@ -2050,8 +2001,8 @@ function setRmSetupOs(os){
   rmSetupOs=os;
   const cmd=document.getElementById('rmSetupCmd');
   const hint=document.getElementById('rmRunHint');
-  if(cmd)cmd.textContent=RM_RUN_PREVIEW[os];
-  if(hint)hint.textContent=os==='win'?'Open PowerShell or Terminal, paste the copied command, press Enter. First run ~2 min.':'Open Terminal, paste the copied command, press Enter. First run ~2 min.';
+  if(cmd)cmd.textContent=os==='win'?RM_RUN_WIN:RM_RUN_MAC;
+  if(hint)hint.textContent=os==='win'?'Open PowerShell, paste, Enter. First run ~2 min.':'Open Terminal, paste, Enter. First run ~2 min.';
 }
 function crc32Buf(buf){
   let c=0xffffffff;
