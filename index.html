@@ -1000,11 +1000,11 @@ html.auth-open .auth-overlay{display:flex}
           <h4>Setup Resume Matcher (3 steps)</h4>
           <p>Runs on your computer only. This page stays your job tracker — Docker runs the resume tool locally.</p>
           <details style="margin-bottom:14px;font-size:11px;color:var(--text-secondary);background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px" open>
-            <summary style="cursor:pointer;font-weight:500">⚠️ Chrome flag required (HTTPS fix)</summary>
+            <summary style="cursor:pointer;font-weight:500">⚠️ Step 0 — Chrome flag (required once)</summary>
             <p style="margin:8px 0 0 0;line-height:1.55">
               Open <code style="font-size:10px">chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>,
-              add <code style="font-size:10px">http://localhost:18765</code>, enable, relaunch Chrome.
-              Then connect to <code style="font-size:10px">http://localhost:18765</code>.
+              add <code style="font-size:10px">http://localhost:18765</code>, Enable, relaunch Chrome.
+              This tells Chrome to allow <code style="font-size:10px">http://localhost:18765</code> from this <code style="font-size:10px">https://</code> site.
             </p>
           </details>
           <div class="rm-steps">
@@ -1933,13 +1933,13 @@ const RM_COMPOSE_YML=`services:
     environment:
       - FRONTEND_BASE_URL=http://127.0.0.1:3000
       - LOG_LEVEL=INFO
-      - CORS_ORIGINS=["http://localhost:18765","http://127.0.0.1:18765","http://localhost:8080","http://127.0.0.1:8080","http://localhost:5500","http://127.0.0.1:5500","http://localhost:5173","http://127.0.0.1:5173"]
+      - CORS_ORIGINS=["http://localhost:18765","http://127.0.0.1:18765","http://localhost:8080","http://127.0.0.1:8080","http://localhost:5500","http://127.0.0.1:5500","http://localhost:5173","http://127.0.0.1:5173","https://domabyte.github.io"]
     restart: unless-stopped
 
 volumes:
   resume-matcher-data:
 `;
-const RM_FIX_CORS=`docker rm -f pipeline-resume-matcher 2>/dev/null; docker run -d --name pipeline-resume-matcher -p ${RM_PORT}:3000 -v resume-matcher-data:/app/backend/data -e FRONTEND_BASE_URL=http://127.0.0.1:3000 -e 'CORS_ORIGINS=["http://localhost:${RM_PORT}","http://127.0.0.1:${RM_PORT}","http://localhost:8080","http://127.0.0.1:8080","http://localhost:5500","http://127.0.0.1:5500","http://localhost:5173","http://127.0.0.1:5173"]' --restart unless-stopped ghcr.io/srbhr/resume-matcher:latest; echo "Set Pipeline URL to http://localhost:${RM_PORT}"`;
+const RM_FIX_CORS=`docker rm -f pipeline-resume-matcher 2>/dev/null; docker run -d --name pipeline-resume-matcher -p ${RM_PORT}:3000 -v resume-matcher-data:/app/backend/data -e FRONTEND_BASE_URL=http://127.0.0.1:3000 -e 'CORS_ORIGINS=["http://localhost:${RM_PORT}","http://127.0.0.1:${RM_PORT}","http://localhost:8080","http://127.0.0.1:8080","http://localhost:5500","http://127.0.0.1:5500","http://localhost:5173","http://127.0.0.1:5173","https://domabyte.github.io"]' --restart unless-stopped ghcr.io/srbhr/resume-matcher:latest; echo "Set Pipeline URL to http://localhost:${RM_PORT}"`;
 let rmSetupOs=(/Win/i.test(navigator.platform)||/Windows/i.test(navigator.userAgent))?'win':'mac';
 const RM_RUN_MAC=`mkdir -p ~/resume-matcher && cd ~/resume-matcher && cat > docker-compose.yml << 'EOF'
 ${RM_COMPOSE_YML}EOF
