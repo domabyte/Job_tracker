@@ -30,7 +30,11 @@ volumes:
 docker info *> $null
 if (-not $?) { Write-Host 'Open Docker Desktop first.'; exit 1 }
 
-docker rm -f pipeline-resume-matcher 2>$null
+# Ignore "No such container" on first install (bash: 2>/dev/null || true)
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'SilentlyContinue'
+docker rm -f pipeline-resume-matcher *> $null
+$ErrorActionPreference = $prevEap
 docker compose -f docker-compose.yml up -d
 
 Write-Host ""
